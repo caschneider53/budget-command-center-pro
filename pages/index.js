@@ -1,360 +1,610 @@
+
 import { useSession, signIn, signOut } from 'next-auth/react'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Head from 'next/head'
 
-const S = {
-  layout: { display:'flex', minHeight:'100vh', background:'var(--bg)', color:'var(--text)', fontFamily:"'Inter',system-ui,sans-serif" },
-  sidebar: { width:'220px', flexShrink:0, background:'var(--surface)', borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column' },
-  logo: { padding:'20px 18px', borderBottom:'1px solid var(--border)' },
-  logoMark: { fontSize:'15px', fontWeight:700, letterSpacing:'-0.02em', marginBottom:'2px' },
-  logoSub: { fontSize:'10px', color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.1em' },
-  nav: (a) => ({ display:'flex', alignItems:'center', gap:'9px', padding:'9px 18px', fontSize:'13px', fontWeight:a?600:400, color:a?'var(--blue)':'var(--muted)', background:a?'var(--blue-dim)':'transparent', borderLeft:a?'2px solid var(--blue)':'2px solid transparent', cursor:'pointer', transition:'all 120ms ease' }),
-  main: { flex:1, display:'flex', flexDirection:'column', overflow:'auto' },
-  topbar: { padding:'14px 24px', background:'var(--surface)', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 },
-  topTitle: { fontSize:'18px', fontWeight:700, letterSpacing:'-0.02em' },
-  btn: (c='var(--blue)') => ({ background:c, color:'#fff', padding:'8px 14px', borderRadius:'var(--r-sm)', fontSize:'12px', fontWeight:600, cursor:'pointer', border:'none', transition:'opacity 120ms' }),
-  content: { padding:'20px 24px', flex:1 },
-  kgrid: { display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:'12px', marginBottom:'20px' },
-  kpi: { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r-lg)', padding:'16px 18px' },
-  klabel: { fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.09em', color:'var(--muted)', marginBottom:'8px' },
-  kval: { fontSize:'24px', fontWeight:700, letterSpacing:'-0.02em', marginBottom:'3px', fontVariantNumeric:'tabular-nums lining-nums' },
-  kmeta: (ok=true) => ({ fontSize:'11px', color:ok?'var(--green)':'var(--muted)', fontWeight:500 }),
-  g2: { display:'grid', gridTemplateColumns:'1.4fr 1fr', gap:'14px', marginBottom:'14px' },
-  card: { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r-lg)', padding:'18px 20px' },
-  ctitle: { fontSize:'15px', fontWeight:700, marginBottom:'14px', letterSpacing:'-0.01em' },
-  barBg: { height:'7px', background:'var(--surface-3)', borderRadius:'999px', overflow:'hidden', marginTop:'5px' },
-  bar: (p,c) => ({ width:`${Math.min(p,100)}%`, height:'100%', background:`var(--${c})`, borderRadius:'999px', transition:'width .5s ease' }),
-  row: { display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom:'1px solid var(--border)' },
-  tag: (c='var(--blue)') => ({ fontSize:'10px', fontWeight:600, padding:'2px 7px', borderRadius:'999px', background:c+'22', color:c }),
-  dot: (c) => ({ width:'7px', height:'7px', borderRadius:'50%', background:`var(--${c})`, display:'inline-block', marginRight:'7px', flexShrink:0 }),
-  input: { background:'var(--surface-2)', border:'1px solid var(--border-2)', borderRadius:'var(--r-sm)', padding:'8px 11px', fontSize:'13px', color:'var(--text)', width:'100%', outline:'none' },
-  label: { fontSize:'11px', color:'var(--muted)', marginBottom:'5px', display:'block' },
-  fgrid: { display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'10px' },
-  modal: { position:'fixed', inset:0, background:'rgba(0,0,0,0.65)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100, backdropFilter:'blur(4px)' },
-  mbox: { background:'var(--surface)', border:'1px solid var(--border-2)', borderRadius:'var(--r-xl)', padding:'26px', width:'420px', maxWidth:'95vw', boxShadow:'0 24px 64px rgba(0,0,0,0.7)' },
-  empty: { display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'48px 20px', color:'var(--muted)', textAlign:'center', gap:'10px' },
-  emptyIcon: { fontSize:'32px', marginBottom:'4px' },
-  emptyTitle: { fontSize:'14px', fontWeight:600, color:'var(--text)' },
-  emptySub: { fontSize:'12px', maxWidth:'28ch', lineHeight:1.6 },
-  saving: { position:'fixed', bottom:'20px', right:'20px', background:'var(--surface-3)', border:'1px solid var(--border-2)', borderRadius:'var(--r-md)', padding:'8px 14px', fontSize:'12px', color:'var(--muted)', zIndex:200, display:'flex', alignItems:'center', gap:'8px' },
-  amsg: (ai) => ({ display:'flex', gap:'8px', flexDirection:ai?'row':'row-reverse', marginBottom:'12px', alignItems:'flex-start' }),
-  abub: (ai) => ({ maxWidth:'78%', padding:'9px 13px', borderRadius:ai?'4px 13px 13px 13px':'13px 4px 13px 13px', background:ai?'var(--surface-2)':'var(--blue-dim)', fontSize:'13px', lineHeight:1.65 }),
+const DEFAULT_BUDGETS = {
+  Housing: 2250,
+  'Food & Groceries': 800,
+  Transportation: 450,
+  Utilities: 300,
+  Insurance: 350,
+  Health: 150,
+  Personal: 250,
+  Entertainment: 200,
+  Savings: 1200,
+  Debt: 400,
 }
 
-const BILLS = [
-  {name:'Mortgage', due:'May 12', amount:1450},
-  {name:'Utilities', due:'May 14', amount:220},
-  {name:'Auto Insurance', due:'May 17', amount:190},
-  {name:'Internet', due:'May 18', amount:95},
-  {name:'Electric', due:'May 20', amount:145},
-  {name:'Gym Membership', due:'May 22', amount:45},
+const DEFAULT_ASSETS = [
+  { name: 'Checking', amount: 2500 },
+  { name: 'Savings', amount: 6000 },
+  { name: 'Truck', amount: 18000 },
+  { name: 'Tools', amount: 5000 },
+]
+
+const DEFAULT_DEBTS = [
+  { name: 'Mortgage', amount: 185000 },
+  { name: 'Truck Loan', amount: 9500 },
+  { name: 'Credit Cards', amount: 1800 },
+]
+
+const DEFAULT_GOALS = [
+  { name: 'Emergency Fund', target: 10000, current: 6000 },
+  { name: 'Property Down Payment', target: 25000, current: 8000 },
+  { name: 'Tool Upgrade Fund', target: 3000, current: 1200 },
 ]
 
 const NAV = [
-  {label:'Dashboard', icon:'📊'},
-  {label:'Budget', icon:'💰'},
-  {label:'Transactions', icon:'💳'},
-  {label:'Bills', icon:'🗓️'},
-  {label:'Goals', icon:'🎯'},
-  {label:'AI Coach', icon:'🤖'},
+  { label: 'Dashboard', icon: '📊' },
+  { label: 'Budget', icon: '💰' },
+  { label: 'Transactions', icon: '💳' },
+  { label: 'Bills', icon: '🗓️' },
+  { label: 'Goals', icon: '🎯' },
+  { label: 'Net Worth', icon: '🏠' },
+  { label: 'AI Coach', icon: '🤖' },
 ]
 
-const AI_REPLIES = [
-  "Based on your budget setup, start by logging your first transactions so I can give you personalized insights.",
-  "Your goals are set up — now try adding your income sources first, then track expenses.",
-  "To improve your savings rate, track every transaction for 30 days. Most people find 2–3 surprising categories they can trim.",
-  "Your Housing budget is your biggest category. Once you log your mortgage or rent, you'll see exactly how much breathing room you have.",
-  "Once you have 2+ weeks of transactions logged, I can identify your top spending categories and suggest specific cuts.",
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+const recurringTemplates = [
+  { name: 'Mortgage', category: 'Housing', amount: 1450, day: 12 },
+  { name: 'Internet', category: 'Utilities', amount: 95, day: 18 },
+  { name: 'Auto Insurance', category: 'Insurance', amount: 190, day: 17 },
+  { name: 'Gym Membership', category: 'Health', amount: 45, day: 22 },
 ]
 
-function fmt(n) {
-  return '$' + Math.abs(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})
+const fmt = (n = 0) => `$${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const pct = (n = 0) => `${Number(n || 0).toFixed(1)}%`
+const monthKey = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+const labelForMonth = (key) => {
+  const [y, m] = key.split('-')
+  return `${MONTHS[Number(m) - 1]} ${y}`
 }
 
-// ── LOGIN SCREEN ──
-function LoginScreen() {
+function CircleChart({ data }) {
+  const total = data.reduce((sum, item) => sum + item.amount, 0)
+  let start = 0
+  const segments = data.map((item) => {
+    const value = total ? (item.amount / total) * 100 : 0
+    const seg = `${item.color} ${start}% ${start + value}%`
+    start += value
+    return seg
+  })
   return (
-    <div style={{minHeight:'100vh', background:'var(--bg)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'Inter',system-ui,sans-serif"}}>
-      <div style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r-xl)', padding:'48px 40px', width:'380px', maxWidth:'95vw', textAlign:'center', boxShadow:'var(--shadow-lg)'}}>
-        <div style={{fontSize:'40px', marginBottom:'16px'}}>💰</div>
-        <div style={{fontSize:'22px', fontWeight:700, letterSpacing:'-0.02em', marginBottom:'6px'}}>Budget Command Center</div>
-        <div style={{fontSize:'13px', color:'var(--muted)', marginBottom:'32px', lineHeight:1.6}}>Track spending, hit your goals, and take control of your finances.</div>
-        <button
-          onClick={() => signIn('google')}
-          style={{width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:'10px', padding:'12px 20px', background:'var(--surface-2)', border:'1px solid var(--border-2)', borderRadius:'var(--r-md)', fontSize:'14px', fontWeight:600, cursor:'pointer', color:'var(--text)', transition:'background 150ms'}}
-          onMouseEnter={e=>e.currentTarget.style.background='var(--surface-3)'}
-          onMouseLeave={e=>e.currentTarget.style.background='var(--surface-2)'}>
-          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-          Continue with Google
-        </button>
-        <div style={{marginTop:'20px', fontSize:'11px', color:'var(--muted)'}}>Your data is private and only visible to you.</div>
+    <div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div
+        style={{
+          width: 180,
+          height: 180,
+          borderRadius: '50%',
+          background: total ? `conic-gradient(${segments.join(',')})` : 'var(--surface-3)',
+          display: 'grid',
+          placeItems: 'center',
+          position: 'relative',
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'var(--surface)', display: 'grid', placeItems: 'center', textAlign: 'center', border: '1px solid var(--border)' }}>
+          <div>
+            <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '.08em' }}>Spent</div>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>{fmt(total)}</div>
+          </div>
+        </div>
+      </div>
+      <div style={{ flex: 1, minWidth: 220 }}>
+        {data.length ? data.map((item) => (
+          <div key={item.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: item.color, display: 'inline-block' }} />
+              <span style={{ fontSize: 13 }}>{item.label}</span>
+            </div>
+            <strong style={{ fontSize: 13 }}>{fmt(item.amount)}</strong>
+          </div>
+        )) : <div style={{ color: 'var(--muted)', fontSize: 13 }}>Add transactions to see your spending breakdown.</div>}
       </div>
     </div>
   )
 }
 
-// ── MAIN APP ──
-function App({ session }) {
-  const [tab, setTab] = useState('Dashboard')
-  const [modal, setModal] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [saveStatus, setSaveStatus] = useState('')
-  const [txns, setTxns] = useState([])
-  const [goals, setGoals] = useState([])
-  const [budgets, setBudgets] = useState([])
-  const [form, setForm] = useState({name:'', category:'Housing', amount:'', type:'expense'})
-  const [msgs, setMsgs] = useState([
-    {ai:true, text:`Welcome back, ${session.user.name.split(' ')[0]}! Your data is saved automatically. Add transactions to get started.`},
-  ])
-  const [aiIn, setAiIn] = useState('')
-
-  useEffect(() => {
-    fetch('/api/data')
-      .then(r => r.json())
-      .then(data => { setTxns(data.transactions||[]); setGoals(data.goals||[]); setBudgets(data.budgets||[]); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [])
-
-  const saveData = useCallback((t, g, b) => {
-    setSaveStatus('saving')
-    fetch('/api/data', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({transactions:t, goals:g, budgets:b}) })
-      .then(() => { setSaveStatus('saved'); setTimeout(()=>setSaveStatus(''), 2000) })
-      .catch(() => setSaveStatus(''))
-  }, [])
-
-  const income = txns.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0)
-  const spent = txns.filter(t=>t.type==='expense').reduce((s,t)=>s+Math.abs(t.amount),0)
-  const available = income - spent
-  const savingsRate = income > 0 ? ((income-spent)/income*100).toFixed(1) : '0.0'
-  const catSpend = (name) => txns.filter(t=>t.type==='expense'&&t.category===name).reduce((s,t)=>s+Math.abs(t.amount),0)
-
-  function addTxn() {
-    if (!form.name || !form.amount) return
-    const amt = parseFloat(form.amount)
-    if (isNaN(amt)||amt<=0) return
-    const newTxn = {id:Date.now(), ...form, amount:form.type==='expense'?-Math.abs(amt):Math.abs(amt), date:'Today'}
-    const newTxns = [newTxn, ...txns]
-    setTxns(newTxns); saveData(newTxns, goals, budgets)
-    setModal(false); setForm({name:'', category:'Housing', amount:'', type:'expense'})
-  }
-
-  function deleteTxn(id) {
-    const newTxns = txns.filter(t=>t.id!==id)
-    setTxns(newTxns); saveData(newTxns, goals, budgets)
-  }
-
-  function updateGoal(idx, val) {
-    const newGoals = goals.map((g,i)=>i===idx?{...g,current:val}:g)
-    setGoals(newGoals); saveData(txns, newGoals, budgets)
-  }
-
-  function sendAi(e) {
-    if (e&&e.key&&e.key!=='Enter') return
-    if (!aiIn.trim()) return
-    const q = aiIn.trim(); setMsgs(m=>[...m,{ai:false,text:q}]); setAiIn('')
-    setTimeout(()=>setMsgs(m=>[...m,{ai:true,text:AI_REPLIES[Math.floor(Math.random()*AI_REPLIES.length)]}]),700)
-  }
-
-  if (loading) return (
-    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'var(--bg)',color:'var(--muted)',fontFamily:'Inter,sans-serif',flexDirection:'column',gap:'12px'}}>
-      <div style={{fontSize:'28px'}}>💰</div><div style={{fontSize:'14px'}}>Loading your budget...</div>
-    </div>
-  )
-
+function Bars({ items }) {
+  const max = Math.max(...items.map(i => i.amount), 1)
   return (
-    <div style={S.layout}>
-      <aside style={S.sidebar}>
-        <div style={S.logo}>
-          <div style={S.logoMark}>💰 Budget Pro</div>
-          <div style={S.logoSub}>Command Center</div>
-        </div>
-        <nav style={{flex:1, paddingTop:'8px'}}>
-          {NAV.map(n=>(
-            <div key={n.label} style={S.nav(tab===n.label)} onClick={()=>setTab(n.label)}>
-              <span style={{fontSize:'14px'}}>{n.icon}</span><span>{n.label}</span>
-            </div>
-          ))}
-        </nav>
-        <div style={{padding:'14px 18px', borderTop:'1px solid var(--border)'}}>
-          <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'10px'}}>
-            {session.user.image && <img src={session.user.image} alt="" width="28" height="28" style={{borderRadius:'50%'}} />}
-            <div>
-              <div style={{fontWeight:600,fontSize:'12px',color:'var(--text)'}}>{session.user.name}</div>
-              <div style={{color:'var(--muted)',fontSize:'10px'}}>May 2026</div>
-            </div>
+    <div style={{ display: 'grid', gap: 12 }}>
+      {items.map((item) => (
+        <div key={item.label}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
+            <span style={{ color: 'var(--muted)' }}>{item.label}</span>
+            <strong>{fmt(item.amount)}</strong>
           </div>
-          <button onClick={()=>signOut()} style={{width:'100%',padding:'6px',background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:'var(--r-sm)',fontSize:'11px',color:'var(--muted)',cursor:'pointer'}}>Sign out</button>
-        </div>
-      </aside>
-
-      <div style={S.main}>
-        <div style={S.topbar}>
-          <div style={S.topTitle}>{tab}</div>
-          <div style={{display:'flex',gap:'10px',alignItems:'center'}}>
-            <span style={{fontSize:'12px',color:'var(--muted)'}}>May 2026</span>
-            <button style={S.btn()} onClick={()=>setModal(true)}>+ Add Transaction</button>
+          <div style={{ height: 10, borderRadius: 999, background: 'var(--surface-3)', overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${(item.amount / max) * 100}%`, background: item.color, borderRadius: 999 }} />
           </div>
         </div>
-
-        <div style={S.content}>
-          {tab==='Dashboard' && (
-            <>
-              <div style={S.kgrid}>
-                <div style={S.kpi}><div style={S.klabel}>Available to Budget</div><div style={S.kval}>{fmt(available)}</div><div style={S.kmeta(available>=0)}>{income===0?'Add income to get started':available>=0?'Looking good':'Over budget'}</div></div>
-                <div style={S.kpi}><div style={S.klabel}>Monthly Income</div><div style={S.kval}>{fmt(income)}</div><div style={S.kmeta(true)}>{txns.filter(t=>t.type==='income').length} deposit{txns.filter(t=>t.type==='income').length!==1?'s':''} logged</div></div>
-                <div style={S.kpi}><div style={S.klabel}>Monthly Spending</div><div style={S.kval}>{fmt(spent)}</div><div style={S.kmeta(true)}>{txns.filter(t=>t.type==='expense').length} transaction{txns.filter(t=>t.type==='expense').length!==1?'s':''} logged</div></div>
-                <div style={S.kpi}><div style={S.klabel}>Savings Rate</div><div style={S.kval}>{savingsRate}%</div><div style={S.kmeta(parseFloat(savingsRate)>0)}>{income===0?'Log income first':parseFloat(savingsRate)>15?'Great rate!':'Keep going'}</div></div>
-              </div>
-              <div style={S.g2}>
-                <div style={S.card}>
-                  <div style={S.ctitle}>Budget Categories</div>
-                  {budgets.map(c=>{
-                    const s=catSpend(c.name); const pct=c.budget>0?Math.round(s/c.budget*100):0
-                    return (<div key={c.name} style={{marginBottom:'13px'}}>
-                      <div style={{display:'flex',justifyContent:'space-between',fontSize:'12px',marginBottom:'3px'}}>
-                        <span style={{display:'flex',alignItems:'center'}}><span style={S.dot(c.color)}/>{c.name}</span>
-                        <span style={{color:'var(--muted)',fontVariantNumeric:'tabular-nums'}}>{fmt(s)} <span style={{color:'var(--faint)'}}>/ ${c.budget.toLocaleString()}</span></span>
-                      </div>
-                      <div style={S.barBg}><div style={S.bar(pct,c.color)}/></div>
-                    </div>)
-                  })}
-                </div>
-                <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
-                  <div style={S.card}>
-                    <div style={S.ctitle}>Recent Transactions</div>
-                    {txns.length===0?(<div style={S.empty}><div style={S.emptyIcon}>💳</div><div style={S.emptyTitle}>No transactions yet</div><div style={S.emptySub}>Click "+ Add Transaction" to log your first one.</div></div>)
-                    :txns.slice(0,5).map(t=>(<div key={t.id} style={S.row}><div><div style={{fontWeight:500,fontSize:'13px'}}>{t.name}</div><div style={{fontSize:'11px',color:'var(--muted)'}}>{t.category} · {t.date}</div></div><div style={{fontWeight:700,fontSize:'13px',color:t.amount>0?'var(--green)':'var(--text)',fontVariantNumeric:'tabular-nums'}}>{t.amount>0?'+':''}{fmt(t.amount)}</div></div>))}
-                  </div>
-                  <div style={S.card}>
-                    <div style={S.ctitle}>Bills Due Soon</div>
-                    {BILLS.slice(0,3).map(b=>(<div key={b.name} style={S.row}><div><div style={{fontWeight:500,fontSize:'13px'}}>{b.name}</div><div style={{fontSize:'11px',color:'var(--muted)'}}>{b.due}</div></div><div style={{fontWeight:700,fontSize:'13px',fontVariantNumeric:'tabular-nums'}}>${b.amount.toLocaleString()}</div></div>))}
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-
-          {tab==='Budget' && (
-            <>
-              <div style={S.kgrid}>
-                <div style={S.kpi}><div style={S.klabel}>Total Budgeted</div><div style={S.kval}>${budgets.reduce((s,c)=>s+c.budget,0).toLocaleString()}</div></div>
-                <div style={S.kpi}><div style={S.klabel}>Total Spent</div><div style={S.kval}>{fmt(spent)}</div><div style={S.kmeta(true)}>{income>0?Math.round(spent/income*100)+'% of income':'Log income first'}</div></div>
-                <div style={S.kpi}><div style={S.klabel}>Remaining</div><div style={S.kval}>{fmt(budgets.reduce((s,c)=>s+c.budget,0)-spent)}</div></div>
-              </div>
-              <div style={S.card}>
-                <div style={S.ctitle}>Category Breakdown</div>
-                {budgets.map(c=>{const s=catSpend(c.name);const pct=Math.round(s/c.budget*100);return(<div key={c.name} style={{padding:'12px 0',borderBottom:'1px solid var(--border)'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'7px'}}><div style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'13px',fontWeight:600}}><span style={S.dot(c.color)}/>{c.name}</div><div style={{display:'flex',gap:'10px',alignItems:'center'}}><span style={{fontSize:'12px',color:'var(--muted)',fontVariantNumeric:'tabular-nums'}}>{fmt(s)} / ${c.budget.toLocaleString()}</span><span style={S.tag(pct>80?'var(--red)':pct>60?'var(--yellow)':'var(--green)')}>{pct}%</span></div></div><div style={S.barBg}><div style={S.bar(pct,c.color)}/></div></div>)})}
-              </div>
-            </>
-          )}
-
-          {tab==='Transactions' && (
-            <div style={S.card}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'16px'}}>
-                <div style={S.ctitle}>All Transactions</div>
-                <button style={S.btn()} onClick={()=>setModal(true)}>+ Add</button>
-              </div>
-              {txns.length===0?(<div style={S.empty}><div style={S.emptyIcon}>📋</div><div style={S.emptyTitle}>No transactions yet</div><div style={S.emptySub}>Start logging your income and expenses.</div><button style={{...S.btn(),marginTop:'8px'}} onClick={()=>setModal(true)}>+ Add First Transaction</button></div>)
-              :(<table><thead><tr style={{borderBottom:'1px solid var(--border)'}}>{['Date','Description','Category','Amount','Type',''].map((h,i)=>(<th key={i} style={{textAlign:'left',padding:'8px 10px',fontSize:'10px',textTransform:'uppercase',letterSpacing:'0.09em',color:'var(--muted)',fontWeight:600}}>{h}</th>))}</tr></thead>
-              <tbody>{txns.map(t=>(<tr key={t.id} style={{borderBottom:'1px solid var(--border)',transition:'background 120ms'}} onMouseEnter={e=>e.currentTarget.style.background='var(--surface-2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><td style={{padding:'10px',color:'var(--muted)',fontSize:'12px'}}>{t.date}</td><td style={{padding:'10px',fontWeight:500,fontSize:'13px'}}>{t.name}</td><td style={{padding:'10px'}}><span style={S.tag()}>{t.category}</span></td><td style={{padding:'10px',fontWeight:700,fontSize:'13px',color:t.amount>0?'var(--green)':'var(--text)',fontVariantNumeric:'tabular-nums'}}>{t.amount>0?'+':''}{fmt(t.amount)}</td><td style={{padding:'10px'}}><span style={S.tag(t.type==='income'?'var(--green)':'var(--muted)')}>{t.type}</span></td><td style={{padding:'10px'}}><button onClick={()=>deleteTxn(t.id)} style={{color:'var(--muted)',fontSize:'14px',padding:'2px 6px',borderRadius:'4px',transition:'color 120ms'}} onMouseEnter={e=>e.currentTarget.style.color='var(--red)'} onMouseLeave={e=>e.currentTarget.style.color='var(--muted)'}>✕</button></td></tr>))}</tbody></table>)}
-            </div>
-          )}
-
-          {tab==='Bills' && (
-            <>
-              <div style={S.kgrid}>
-                <div style={S.kpi}><div style={S.klabel}>Due This Month</div><div style={S.kval}>${BILLS.reduce((s,b)=>s+b.amount,0).toLocaleString()}</div></div>
-                <div style={S.kpi}><div style={S.klabel}>Bills Count</div><div style={S.kval}>{BILLS.length}</div></div>
-                <div style={S.kpi}><div style={S.klabel}>Largest Bill</div><div style={S.kval}>${Math.max(...BILLS.map(b=>b.amount)).toLocaleString()}</div></div>
-              </div>
-              <div style={S.card}>
-                <div style={S.ctitle}>Upcoming Bills</div>
-                {BILLS.map(b=>(<div key={b.name} style={{...S.row,padding:'13px 0'}}><div style={{display:'flex',alignItems:'center',gap:'12px'}}><div style={{width:'34px',height:'34px',borderRadius:'var(--r-sm)',background:'var(--surface-2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'16px'}}>🗓️</div><div><div style={{fontWeight:600,fontSize:'13px'}}>{b.name}</div><div style={{fontSize:'11px',color:'var(--muted)'}}>Due {b.due}</div></div></div><div style={{display:'flex',alignItems:'center',gap:'10px'}}><span style={{fontWeight:700,fontSize:'15px',fontVariantNumeric:'tabular-nums'}}>${b.amount.toLocaleString()}</span><span style={S.tag('var(--yellow)')}>Upcoming</span></div></div>))}
-              </div>
-            </>
-          )}
-
-          {tab==='Goals' && (
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:'14px'}}>
-              {goals.map((g,gi)=>{const pct=g.target>0?Math.round(g.current/g.target*100):0;return(
-                <div key={g.id||gi} style={{...S.card,display:'flex',flexDirection:'column',gap:'13px'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:'10px'}}><span style={{fontSize:'22px'}}>{g.icon}</span><div><div style={{fontWeight:700,fontSize:'14px'}}>{g.name}</div><div style={{fontSize:'11px',color:'var(--muted)'}}>Target: ${g.target.toLocaleString()}</div></div></div>
-                  <div><div style={{display:'flex',justifyContent:'space-between',marginBottom:'5px',fontSize:'12px'}}><span style={{fontWeight:600,fontVariantNumeric:'tabular-nums'}}>${g.current.toLocaleString()} saved</span><span style={S.tag(`var(--${g.color})`)}>{pct}%</span></div><div style={S.barBg}><div style={S.bar(pct,g.color)}/></div></div>
-                  <input style={{...S.input,fontSize:'12px',padding:'6px 8px'}} type="number" placeholder="Update saved amount & press Enter..." onKeyDown={e=>{if(e.key==='Enter'&&e.target.value){const val=parseFloat(e.target.value);if(!isNaN(val)&&val>=0){updateGoal(gi,val);e.target.value=''}}}}/>
-                  <div style={{fontSize:'11px',color:'var(--muted)',fontVariantNumeric:'tabular-nums'}}>${(g.target-g.current).toLocaleString()} remaining</div>
-                </div>
-              )})}
-            </div>
-          )}
-
-          {tab==='AI Coach' && (
-            <div style={{display:'grid',gridTemplateColumns:'1fr 280px',gap:'14px',height:'calc(100vh - 130px)'}}>
-              <div style={{...S.card,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-                <div style={S.ctitle}>AI Budget Coach 🤖</div>
-                <div style={{flex:1,overflowY:'auto',marginBottom:'14px',display:'flex',flexDirection:'column'}}>
-                  {msgs.map((m,i)=>(<div key={i} style={S.amsg(m.ai)}>{m.ai&&<div style={{width:'26px',height:'26px',borderRadius:'50%',background:'var(--blue-dim)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:'13px'}}>🤖</div>}<div style={S.abub(m.ai)}>{m.text}</div></div>))}
-                </div>
-                <div style={{display:'flex',gap:'8px'}}>
-                  <input style={S.input} value={aiIn} onChange={e=>setAiIn(e.target.value)} onKeyDown={sendAi} placeholder="Ask about spending, goals, or savings tips..."/>
-                  <button style={S.btn()} onClick={()=>sendAi(null)}>Send</button>
-                </div>
-              </div>
-              <div style={{...S.card,overflow:'auto'}}>
-                <div style={S.ctitle}>Suggested Questions</div>
-                {['How can I save faster for my down payment?','Where should I focus my budget first?','What savings rate should I aim for?','How do I build my emergency fund faster?'].map(q=>(
-                  <div key={q} onClick={()=>setAiIn(q)} style={{fontSize:'12px',color:'var(--muted)',padding:'9px 11px',borderRadius:'var(--r-sm)',background:'var(--surface-2)',marginBottom:'8px',cursor:'pointer',lineHeight:1.55,transition:'background 120ms'}} onMouseEnter={e=>e.currentTarget.style.background='var(--surface-3)'} onMouseLeave={e=>e.currentTarget.style.background='var(--surface-2)'}>💡 {q}</div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {saveStatus && (<div style={S.saving}>{saveStatus==='saving'?<><span style={{fontSize:'10px'}}>⏳</span> Saving...</>:<><span style={{color:'var(--green)',fontSize:'12px'}}>✓</span> Saved</>}</div>)}
-
-      {modal && (
-        <div style={S.modal} onClick={e=>e.target===e.currentTarget&&setModal(false)}>
-          <div style={S.mbox}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px'}}>
-              <div style={{fontSize:'17px',fontWeight:700}}>Add Transaction</div>
-              <button style={{color:'var(--muted)',fontSize:'20px',lineHeight:1}} onClick={()=>setModal(false)}>×</button>
-            </div>
-            <div style={S.fgrid}>
-              <div><label style={S.label}>Description</label><input style={S.input} value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="e.g. Mortgage"/></div>
-              <div><label style={S.label}>Amount ($)</label><input style={S.input} type="number" step="0.01" min="0" value={form.amount} onChange={e=>setForm(p=>({...p,amount:e.target.value}))} placeholder="0.00"/></div>
-            </div>
-            <div style={S.fgrid}>
-              <div><label style={S.label}>Category</label><select style={S.input} value={form.category} onChange={e=>setForm(p=>({...p,category:e.target.value}))}>{['Housing','Food & Groceries','Transportation','Utilities','Entertainment','Health','Other'].map(c=><option key={c}>{c}</option>)}</select></div>
-              <div><label style={S.label}>Type</label><select style={S.input} value={form.type} onChange={e=>setForm(p=>({...p,type:e.target.value}))}><option value="expense">Expense</option><option value="income">Income</option></select></div>
-            </div>
-            <div style={{display:'flex',gap:'8px',justifyContent:'flex-end',marginTop:'6px'}}>
-              <button style={{...S.btn('var(--surface-3)'),color:'var(--muted)'}} onClick={()=>setModal(false)}>Cancel</button>
-              <button style={S.btn()} onClick={addTxn}>Add Transaction</button>
-            </div>
-          </div>
-        </div>
-      )}
+      ))}
     </div>
   )
 }
 
-// ── ROOT — handles auth state
 export default function Home() {
   const { data: session, status } = useSession()
+  const [active, setActive] = useState('Dashboard')
+  const [budgets, setBudgets] = useState(DEFAULT_BUDGETS)
+  const [transactions, setTransactions] = useState([])
+  const [goals, setGoals] = useState(DEFAULT_GOALS)
+  const [assets, setAssets] = useState(DEFAULT_ASSETS)
+  const [debts, setDebts] = useState(DEFAULT_DEBTS)
+  const [month, setMonth] = useState(monthKey())
+  const [showTxModal, setShowTxModal] = useState(false)
+  const [showBudgetModal, setShowBudgetModal] = useState(false)
+  const [showAssetModal, setShowAssetModal] = useState(false)
+  const [showDebtModal, setShowDebtModal] = useState(false)
+  const [editingBudget, setEditingBudget] = useState({ key: '', value: '' })
+  const [tx, setTx] = useState({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', category: 'Food & Groceries', type: 'expense', recurring: false })
+  const [assetForm, setAssetForm] = useState({ name: '', amount: '' })
+  const [debtForm, setDebtForm] = useState({ name: '', amount: '' })
 
-  if (status === 'loading') return (
-    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'var(--bg)',color:'var(--muted)',fontFamily:'Inter,sans-serif',flexDirection:'column',gap:'12px'}}>
-      <div style={{fontSize:'28px'}}>💰</div><div style={{fontSize:'14px'}}>Loading...</div>
-    </div>
-  )
+  useEffect(() => {
+    const stored = localStorage.getItem('budget-pro-data-v2')
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      setBudgets(parsed.budgets || DEFAULT_BUDGETS)
+      setTransactions(parsed.transactions || [])
+      setGoals(parsed.goals || DEFAULT_GOALS)
+      setAssets(parsed.assets || DEFAULT_ASSETS)
+      setDebts(parsed.debts || DEFAULT_DEBTS)
+    }
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem('budget-pro-data-v2', JSON.stringify({ budgets, transactions, goals, assets, debts }))
+  }, [budgets, transactions, goals, assets, debts])
+
+  const currentTx = useMemo(() => transactions.filter((t) => t.month === month), [transactions, month])
+  const income = currentTx.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
+  const spending = currentTx.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
+  const available = income - spending
+  const savingsRate = income ? ((income - spending) / income) * 100 : 0
+  const recurringBills = currentTx.filter(t => t.recurring && t.type === 'expense').sort((a, b) => new Date(a.date) - new Date(b.date))
+  const byCategory = Object.entries(budgets).map(([name, limit], idx) => {
+    const amount = currentTx.filter(t => t.category === name && t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6', '#f97316', '#ec4899', '#84cc16', '#6366f1']
+    return { label: name, amount, limit, color: colors[idx % colors.length] }
+  })
+  const topSpend = byCategory.filter(i => i.amount > 0).sort((a, b) => b.amount - a.amount).slice(0, 5)
+  const totalAssets = assets.reduce((s, a) => s + Number(a.amount), 0)
+  const totalDebts = debts.reduce((s, d) => s + Number(d.amount), 0)
+  const netWorth = totalAssets - totalDebts
+
+  const monthOptions = Array.from({ length: 12 }).map((_, i) => {
+    const d = new Date()
+    d.setMonth(d.getMonth() - i)
+    return monthKey(d)
+  })
+
+  const addTransaction = () => {
+    if (!tx.description || !tx.amount) return
+    const m = tx.date.slice(0, 7)
+    const item = { ...tx, id: Date.now(), amount: Number(tx.amount), month: m }
+    setTransactions(prev => [item, ...prev])
+    setTx({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', category: 'Food & Groceries', type: 'expense', recurring: false })
+    setShowTxModal(false)
+  }
+
+  const seedRecurring = () => {
+    const [year, mon] = month.split('-')
+    const seeded = recurringTemplates.map((b, i) => ({
+      id: Date.now() + i,
+      description: b.name,
+      amount: b.amount,
+      category: b.category,
+      type: 'expense',
+      recurring: true,
+      date: `${year}-${mon}-${String(b.day).padStart(2, '0')}`,
+      month,
+    }))
+    setTransactions(prev => {
+      const existing = new Set(prev.filter(t => t.month === month).map(t => t.description + t.amount))
+      const fresh = seeded.filter(t => !existing.has(t.description + t.amount))
+      return [...fresh, ...prev]
+    })
+  }
+
+  const saveBudget = () => {
+    setBudgets(prev => ({ ...prev, [editingBudget.key]: Number(editingBudget.value || 0) }))
+    setShowBudgetModal(false)
+  }
+
+  const addAsset = () => {
+    if (!assetForm.name || !assetForm.amount) return
+    setAssets(prev => [...prev, { name: assetForm.name, amount: Number(assetForm.amount) }])
+    setAssetForm({ name: '', amount: '' })
+    setShowAssetModal(false)
+  }
+
+  const addDebt = () => {
+    if (!debtForm.name || !debtForm.amount) return
+    setDebts(prev => [...prev, { name: debtForm.name, amount: Number(debtForm.amount) }])
+    setDebtForm({ name: '', amount: '' })
+    setShowDebtModal(false)
+  }
+
+  const coachMessage = useMemo(() => {
+    if (!income) return 'Log income first so I can help you build a real zero-based plan.'
+    if (savingsRate < 10) return 'Your savings rate is low this month. Trim your top spending category or move extra income to Savings.'
+    if (topSpend[0]?.amount > (topSpend[0]?.limit || 0)) return `You are over budget in ${topSpend[0].label}. Adjust that category or move money from a lower-priority bucket.`
+    return 'You are in a solid spot this month. Keep recurring bills funded and move extra cash toward your property or emergency goals.'
+  }, [income, savingsRate, topSpend])
+
+  if (status === 'loading') return null
+  if (!session) {
+    return (
+      <>
+        <Head><title>Budget Command Center Pro</title></Head>
+        <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#0b1020', color: '#fff', fontFamily: 'Inter, system-ui, sans-serif', padding: 24 }}>
+          <div style={{ width: '100%', maxWidth: 520, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 24, padding: 32 }}>
+            <div style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '.16em', color: '#93c5fd', marginBottom: 12 }}>Budget Pro</div>
+            <h1 style={{ fontSize: 34, lineHeight: 1.05, margin: 0, marginBottom: 12 }}>Your personal money command center.</h1>
+            <p style={{ color: 'rgba(255,255,255,.72)', lineHeight: 1.7, marginBottom: 24 }}>Track cash flow, set category budgets, watch recurring bills, and build net worth in one place.</p>
+            <button onClick={() => signIn('google')} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 18px', fontWeight: 700, cursor: 'pointer' }}>Continue with Google</button>
+          </div>
+        </div>
+      </>
+    )
+  }
 
   return (
     <>
       <Head>
         <title>Budget Command Center Pro</title>
-        <meta name="viewport" content="width=device-width,initial-scale=1"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
-      {session ? <App session={session}/> : <LoginScreen/>}
+      <style jsx global>{`
+        * { box-sizing: border-box; }
+        html, body, #__next { margin: 0; min-height: 100%; }
+        body {
+          --bg: #0b1220;
+          --surface: #121a2b;
+          --surface-2: #182235;
+          --surface-3: #22304a;
+          --border: rgba(148, 163, 184, .16);
+          --border-2: rgba(148, 163, 184, .24);
+          --text: #e5eefc;
+          --muted: #93a4bf;
+          --blue: #3b82f6;
+          --blue-dim: rgba(59,130,246,.12);
+          --green: #10b981;
+          --yellow: #f59e0b;
+          --red: #ef4444;
+          --purple: #8b5cf6;
+          --r-sm: 10px;
+          --r-md: 14px;
+          --r-lg: 18px;
+          --r-xl: 24px;
+          background: var(--bg);
+          color: var(--text);
+          font-family: Inter, system-ui, sans-serif;
+        }
+        button, input, select { font: inherit; }
+        @media (max-width: 900px) {
+          .layout { flex-direction: column; }
+          .sidebar { width: 100% !important; border-right: none !important; border-bottom: 1px solid var(--border); }
+          .navWrap { display: flex; overflow: auto; padding-bottom: 8px; }
+          .contentWrap { padding: 16px !important; }
+          .grid2 { grid-template-columns: 1fr !important; }
+          .topbar { padding: 14px 16px !important; align-items: flex-start !important; gap: 10px; flex-direction: column; }
+        }
+      `}</style>
+
+      <div className="layout" style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)' }}>
+        <aside className="sidebar" style={{ width: 240, background: 'var(--surface)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '22px 18px', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 17, fontWeight: 800 }}>💰 Budget Pro</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.16em', marginTop: 4 }}>Command Center</div>
+          </div>
+          <div className="navWrap" style={{ padding: 12 }}>
+            {NAV.map((item) => {
+              const on = active === item.label
+              return (
+                <button key={item.label} onClick={() => setActive(item.label)} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 10, padding: '11px 12px', marginBottom: 6, background: on ? 'var(--blue-dim)' : 'transparent', color: on ? '#fff' : 'var(--muted)', border: `1px solid ${on ? 'rgba(59,130,246,.24)' : 'transparent'}`, borderRadius: 12, cursor: 'pointer', textAlign: 'left' }}>
+                  <span>{item.icon}</span><span style={{ fontSize: 13, fontWeight: on ? 700 : 500 }}>{item.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </aside>
+
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <div className="topbar" style={{ padding: '16px 24px', background: 'var(--surface)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 19, fontWeight: 800 }}>{active}</div>
+              <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 4 }}>{labelForMonth(month)}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <select value={month} onChange={(e) => setMonth(e.target.value)} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '9px 12px' }}>
+                {monthOptions.map(m => <option key={m} value={m}>{labelForMonth(m)}</option>)}
+              </select>
+              <button onClick={() => setShowTxModal(true)} style={{ background: 'var(--blue)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 14px', fontWeight: 700, cursor: 'pointer' }}>+ Add Transaction</button>
+              <button onClick={() => signOut()} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '10px 14px', cursor: 'pointer' }}>Sign out</button>
+            </div>
+          </div>
+
+          <div className="contentWrap" style={{ padding: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12, marginBottom: 16 }}>
+              {[
+                ['Available to Budget', fmt(available), available >= 0 ? 'Cash left this month' : 'Over budget right now', available >= 0 ? 'var(--green)' : 'var(--red)'],
+                ['Monthly Income', fmt(income), `${currentTx.filter(t => t.type === 'income').length} deposits logged`, 'var(--muted)'],
+                ['Monthly Spending', fmt(spending), `${currentTx.filter(t => t.type === 'expense').length} transactions logged`, 'var(--muted)'],
+                ['Savings Rate', pct(savingsRate), income ? 'Income not spent' : 'Log income first', savingsRate >= 15 ? 'var(--green)' : 'var(--muted)'],
+              ].map(([label, value, meta, color]) => (
+                <div key={label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: '16px 18px' }}>
+                  <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--muted)', marginBottom: 8 }}>{label}</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-.03em' }}>{value}</div>
+                  <div style={{ fontSize: 12, color }}>{meta}</div>
+                </div>
+              ))}
+            </div>
+
+            {active === 'Dashboard' && (
+              <div className="grid2" style={{ display: 'grid', gridTemplateColumns: '1.25fr .95fr', gap: 14 }}>
+                <section style={{ display: 'grid', gap: 14 }}>
+                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                      <div style={{ fontSize: 16, fontWeight: 800 }}>Spending Breakdown</div>
+                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>Top categories this month</div>
+                    </div>
+                    <CircleChart data={topSpend} />
+                  </div>
+                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                      <div style={{ fontSize: 16, fontWeight: 800 }}>Budget Categories</div>
+                      <button onClick={() => setActive('Budget')} style={{ background: 'transparent', color: 'var(--blue)', border: 'none', cursor: 'pointer', fontWeight: 700 }}>Edit budgets</button>
+                    </div>
+                    <div>
+                      {byCategory.map(item => {
+                        const used = item.limit ? (item.amount / item.limit) * 100 : 0
+                        return (
+                          <div key={item.label} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+                              <div style={{ fontSize: 13, fontWeight: 600 }}>{item.label}</div>
+                              <div style={{ fontSize: 12, color: used > 100 ? 'var(--red)' : 'var(--muted)' }}>{fmt(item.amount)} / {fmt(item.limit)}</div>
+                            </div>
+                            <div style={{ height: 8, borderRadius: 999, background: 'var(--surface-3)', marginTop: 6, overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${Math.min(used, 100)}%`, background: used > 100 ? 'var(--red)' : item.color, borderRadius: 999 }} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </section>
+
+                <section style={{ display: 'grid', gap: 14 }}>
+                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
+                    <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 14 }}>Top Spending</div>
+                    {topSpend.length ? <Bars items={topSpend} /> : <div style={{ color: 'var(--muted)', fontSize: 13 }}>No expense data yet for this month.</div>}
+                  </div>
+                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <div style={{ fontSize: 16, fontWeight: 800 }}>Recurring Bills</div>
+                      <button onClick={seedRecurring} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '8px 10px', cursor: 'pointer' }}>Auto-add</button>
+                    </div>
+                    {recurringBills.length ? recurringBills.map(bill => (
+                      <div key={bill.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700 }}>{bill.description}</div>
+                          <div style={{ fontSize: 12, color: 'var(--muted)' }}>{bill.date} • {bill.category}</div>
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 700 }}>{fmt(bill.amount)}</div>
+                      </div>
+                    )) : <div style={{ color: 'var(--muted)', fontSize: 13 }}>No recurring bills loaded for this month yet.</div>}
+                  </div>
+                  <div style={{ background: 'linear-gradient(135deg, rgba(59,130,246,.18), rgba(16,185,129,.14))', border: '1px solid rgba(59,130,246,.22)', borderRadius: 18, padding: 20 }}>
+                    <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.1em', color: '#bfdbfe', marginBottom: 8 }}>AI Coach</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 10 }}>This month&apos;s guidance</div>
+                    <div style={{ color: '#dbeafe', lineHeight: 1.7, fontSize: 14 }}>{coachMessage}</div>
+                  </div>
+                </section>
+              </div>
+            )}
+
+            {active === 'Budget' && (
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 14 }}>Edit Monthly Budgets</div>
+                {Object.entries(budgets).map(([key, value], idx) => {
+                  const spent = byCategory.find(x => x.label === key)?.amount || 0
+                  const used = value ? (spent / value) * 100 : 0
+                  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6', '#f97316', '#ec4899', '#84cc16', '#6366f1']
+                  return (
+                    <div key={key} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 700 }}>{key}</div>
+                          <div style={{ fontSize: 12, color: 'var(--muted)' }}>{fmt(spent)} spent</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <strong>{fmt(value)}</strong>
+                          <button onClick={() => { setEditingBudget({ key, value }); setShowBudgetModal(true) }} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '8px 10px', cursor: 'pointer' }}>Edit</button>
+                        </div>
+                      </div>
+                      <div style={{ height: 10, background: 'var(--surface-3)', borderRadius: 999, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.min(used, 100)}%`, background: used > 100 ? 'var(--red)' : colors[idx % colors.length], borderRadius: 999 }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {active === 'Transactions' && (
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 14 }}>Transactions</div>
+                {currentTx.length ? currentTx.map((item) => (
+                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700 }}>{item.description}</div>
+                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>{item.date} • {item.category}{item.recurring ? ' • recurring' : ''}</div>
+                    </div>
+                    <div style={{ fontWeight: 800, color: item.type === 'income' ? 'var(--green)' : 'var(--text)' }}>{item.type === 'income' ? '+' : '-'}{fmt(item.amount).replace('$', '')}</div>
+                  </div>
+                )) : <div style={{ color: 'var(--muted)', fontSize: 13 }}>No transactions in {labelForMonth(month)} yet.</div>}
+              </div>
+            )}
+
+            {active === 'Bills' && (
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <div style={{ fontSize: 16, fontWeight: 800 }}>Recurring & Upcoming Bills</div>
+                  <button onClick={seedRecurring} style={{ background: 'var(--blue)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', fontWeight: 700 }}>Load default bills</button>
+                </div>
+                {recurringBills.length ? recurringBills.map((bill) => (
+                  <div key={bill.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700 }}>{bill.description}</div>
+                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>Due {bill.date} • {bill.category}</div>
+                    </div>
+                    <strong>{fmt(bill.amount)}</strong>
+                  </div>
+                )) : <div style={{ color: 'var(--muted)', fontSize: 13 }}>No recurring bills for this month. Click “Load default bills” to add them.</div>}
+              </div>
+            )}
+
+            {active === 'Goals' && (
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 14 }}>Savings Goals</div>
+                {goals.map((goal) => {
+                  const progress = goal.target ? (goal.current / goal.target) * 100 : 0
+                  return (
+                    <div key={goal.name} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, gap: 12 }}>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 700 }}>{goal.name}</div>
+                          <div style={{ fontSize: 12, color: 'var(--muted)' }}>{fmt(goal.current)} saved of {fmt(goal.target)}</div>
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>{pct(progress)}</div>
+                      </div>
+                      <div style={{ height: 10, background: 'var(--surface-3)', borderRadius: 999, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.min(progress, 100)}%`, background: 'var(--green)', borderRadius: 999 }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {active === 'Net Worth' && (
+              <div className="grid2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                    <div style={{ fontSize: 16, fontWeight: 800 }}>Assets</div>
+                    <button onClick={() => setShowAssetModal(true)} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '8px 10px', cursor: 'pointer' }}>+ Add Asset</button>
+                  </div>
+                  {assets.map((item, i) => <div key={item.name + i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}><span>{item.name}</span><strong>{fmt(item.amount)}</strong></div>)}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 14, fontWeight: 800 }}><span>Total Assets</span><span>{fmt(totalAssets)}</span></div>
+                </div>
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                    <div style={{ fontSize: 16, fontWeight: 800 }}>Debts</div>
+                    <button onClick={() => setShowDebtModal(true)} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '8px 10px', cursor: 'pointer' }}>+ Add Debt</button>
+                  </div>
+                  {debts.map((item, i) => <div key={item.name + i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}><span>{item.name}</span><strong>{fmt(item.amount)}</strong></div>)}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 14, fontWeight: 800 }}><span>Total Debts</span><span>{fmt(totalDebts)}</span></div>
+                </div>
+                <div style={{ gridColumn: '1 / -1', background: netWorth >= 0 ? 'rgba(16,185,129,.12)' : 'rgba(239,68,68,.12)', border: `1px solid ${netWorth >= 0 ? 'rgba(16,185,129,.24)' : 'rgba(239,68,68,.24)'}`, borderRadius: 18, padding: 20 }}>
+                  <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--muted)', marginBottom: 6 }}>Net Worth</div>
+                  <div style={{ fontSize: 34, fontWeight: 900 }}>{fmt(netWorth)}</div>
+                  <div style={{ color: 'var(--muted)', marginTop: 8 }}>Assets minus liabilities. Keep updating this monthly to see real progress.</div>
+                </div>
+              </div>
+            )}
+
+            {active === 'AI Coach' && (
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 14 }}>AI Coach Notes</div>
+                <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 14, padding: 16, lineHeight: 1.7, fontSize: 14 }}>{coachMessage}</div>
+                <div style={{ marginTop: 14, color: 'var(--muted)', fontSize: 13 }}>Next step ideas: log every income source, mark bills recurring, edit your budget caps, and track your house and debts in Net Worth.</div>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+
+      {showTxModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'grid', placeItems: 'center', padding: 16 }}>
+          <div style={{ width: '100%', maxWidth: 460, background: 'var(--surface)', border: '1px solid var(--border-2)', borderRadius: 18, padding: 20 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 14 }}>Add Transaction</div>
+            <div style={{ display: 'grid', gap: 12 }}>
+              <input value={tx.description} onChange={(e) => setTx({ ...tx, description: e.target.value })} placeholder="Description" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <input type="number" value={tx.amount} onChange={(e) => setTx({ ...tx, amount: e.target.value })} placeholder="Amount" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }} />
+                <input type="date" value={tx.date} onChange={(e) => setTx({ ...tx, date: e.target.value })} style={{ background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <select value={tx.category} onChange={(e) => setTx({ ...tx, category: e.target.value })} style={{ background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }}>
+                  {Object.keys(budgets).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+                <select value={tx.type} onChange={(e) => setTx({ ...tx, type: e.target.value })} style={{ background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }}>
+                  <option value="expense">Expense</option>
+                  <option value="income">Income</option>
+                </select>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--muted)' }}>
+                <input type="checkbox" checked={tx.recurring} onChange={(e) => setTx({ ...tx, recurring: e.target.checked })} /> Mark as recurring
+              </label>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+              <button onClick={() => setShowTxModal(false)} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '10px 12px', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={addTransaction} style={{ background: 'var(--blue)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', fontWeight: 700 }}>Save Transaction</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBudgetModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'grid', placeItems: 'center', padding: 16 }}>
+          <div style={{ width: '100%', maxWidth: 380, background: 'var(--surface)', border: '1px solid var(--border-2)', borderRadius: 18, padding: 20 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 14 }}>Edit Budget</div>
+            <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 8 }}>{editingBudget.key}</div>
+            <input type="number" value={editingBudget.value} onChange={(e) => setEditingBudget({ ...editingBudget, value: e.target.value })} style={{ width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+              <button onClick={() => setShowBudgetModal(false)} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '10px 12px', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={saveBudget} style={{ background: 'var(--blue)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', fontWeight: 700 }}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAssetModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'grid', placeItems: 'center', padding: 16 }}>
+          <div style={{ width: '100%', maxWidth: 380, background: 'var(--surface)', border: '1px solid var(--border-2)', borderRadius: 18, padding: 20 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 14 }}>Add Asset</div>
+            <div style={{ display: 'grid', gap: 12 }}>
+              <input value={assetForm.name} onChange={(e) => setAssetForm({ ...assetForm, name: e.target.value })} placeholder="Asset name" style={{ width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }} />
+              <input type="number" value={assetForm.amount} onChange={(e) => setAssetForm({ ...assetForm, amount: e.target.value })} placeholder="Amount" style={{ width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+              <button onClick={() => setShowAssetModal(false)} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '10px 12px', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={addAsset} style={{ background: 'var(--blue)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', fontWeight: 700 }}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDebtModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'grid', placeItems: 'center', padding: 16 }}>
+          <div style={{ width: '100%', maxWidth: 380, background: 'var(--surface)', border: '1px solid var(--border-2)', borderRadius: 18, padding: 20 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 14 }}>Add Debt</div>
+            <div style={{ display: 'grid', gap: 12 }}>
+              <input value={debtForm.name} onChange={(e) => setDebtForm({ ...debtForm, name: e.target.value })} placeholder="Debt name" style={{ width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }} />
+              <input type="number" value={debtForm.amount} onChange={(e) => setDebtForm({ ...debtForm, amount: e.target.value })} placeholder="Amount" style={{ width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+              <button onClick={() => setShowDebtModal(false)} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '10px 12px', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={addDebt} style={{ background: 'var(--blue)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', fontWeight: 700 }}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
