@@ -1,6 +1,8 @@
 import { Redis } from '@upstash/redis'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from './auth/[...nextauth]'
 
-const redis = Redis.fromEnv() // connected: upstash-kv-citron-forest
+const redis = Redis.fromEnv()
 
 const DEFAULT_DATA = {
   transactions: [],
@@ -20,9 +22,12 @@ const DEFAULT_DATA = {
   ]
 }
 
-const KEY = 'budget_data_v1'
-
 export default async function handler(req, res) {
+  const session = await getServerSession(req, res, authOptions)
+  if (!session) return res.status(401).json({ error: 'Not signed in' })
+
+  const KEY = `budget_data_v1:${session.userId}`
+
   try {
     if (req.method === 'GET') {
       const data = await redis.get(KEY)
@@ -30,9 +35,7 @@ export default async function handler(req, res) {
     }
     if (req.method === 'POST') {
       const body = req.body
-      if (!body || typeof body !== 'object') {
-        return res.status(400).json({ error: 'Invalid body' })
-      }
+      if (!body || typeof body !== 'object') return res.status(400).json({ error: 'Invalid body' })
       await redis.set(KEY, body)
       return res.status(200).json({ ok: true })
     }
