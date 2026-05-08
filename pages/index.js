@@ -1,124 +1,59 @@
-
 import { useSession, signIn, signOut } from 'next-auth/react'
 import { useState, useEffect, useMemo } from 'react'
 import Head from 'next/head'
 
-const DEFAULT_BUDGETS = {
-  Housing: 2250,
-  'Food & Groceries': 800,
-  Transportation: 450,
-  Utilities: 300,
-  Insurance: 350,
-  Health: 150,
-  Personal: 250,
-  Entertainment: 200,
-  Savings: 1200,
-  Debt: 400,
-}
-
-const DEFAULT_ASSETS = [
-  { name: 'Checking', amount: 2500 },
-  { name: 'Savings', amount: 6000 },
-  { name: 'Truck', amount: 18000 },
-  { name: 'Tools', amount: 5000 },
-]
-
-const DEFAULT_DEBTS = [
-  { name: 'Mortgage', amount: 185000 },
-  { name: 'Truck Loan', amount: 9500 },
-  { name: 'Credit Cards', amount: 1800 },
-]
-
-const DEFAULT_GOALS = [
-  { name: 'Emergency Fund', target: 10000, current: 6000 },
-  { name: 'Property Down Payment', target: 25000, current: 8000 },
-  { name: 'Tool Upgrade Fund', target: 3000, current: 1200 },
-]
-
+const DEFAULT_BUDGET_CATS = ['Housing','Food & Groceries','Transportation','Utilities','Insurance','Health','Personal','Entertainment','Savings','Debt']
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 const NAV = [
-  { label: 'Dashboard', icon: '📊' },
-  { label: 'Budget', icon: '💰' },
-  { label: 'Transactions', icon: '💳' },
-  { label: 'Bills', icon: '🗓️' },
-  { label: 'Goals', icon: '🎯' },
-  { label: 'Net Worth', icon: '🏠' },
-  { label: 'AI Coach', icon: '🤖' },
+  {label:'Dashboard',icon:'📊'},
+  {label:'Budget',icon:'💰'},
+  {label:'Transactions',icon:'💳'},
+  {label:'Bills',icon:'🗓️'},
+  {label:'Goals',icon:'🎯'},
+  {label:'Net Worth',icon:'🏠'},
+  {label:'AI Coach',icon:'🤖'},
 ]
+const COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#14b8a6','#f97316','#ec4899','#84cc16','#6366f1']
+const fmt = (n=0) => `$${Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`
+const pct = (n=0) => `${Number(n||0).toFixed(1)}%`
+const monthKey = (d=new Date()) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
+const labelForMonth = k => { const [y,m]=k.split('-'); return `${MONTHS[Number(m)-1]} ${y}` }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-const recurringTemplates = [
-  { name: 'Mortgage', category: 'Housing', amount: 1450, day: 12 },
-  { name: 'Internet', category: 'Utilities', amount: 95, day: 18 },
-  { name: 'Auto Insurance', category: 'Insurance', amount: 190, day: 17 },
-  { name: 'Gym Membership', category: 'Health', amount: 45, day: 22 },
-]
-
-const fmt = (n = 0) => `$${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-const pct = (n = 0) => `${Number(n || 0).toFixed(1)}%`
-const monthKey = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-const labelForMonth = (key) => {
-  const [y, m] = key.split('-')
-  return `${MONTHS[Number(m) - 1]} ${y}`
-}
-
-function CircleChart({ data }) {
-  const total = data.reduce((sum, item) => sum + item.amount, 0)
-  let start = 0
-  const segments = data.map((item) => {
-    const value = total ? (item.amount / total) * 100 : 0
-    const seg = `${item.color} ${start}% ${start + value}%`
-    start += value
-    return seg
-  })
+function DonutChart({data}){
+  const total = data.reduce((s,i)=>s+i.amount,0)
+  let start=0
+  const segs = data.map(i=>{const v=total?(i.amount/total)*100:0; const s=`${i.color} ${start}% ${start+v}%`; start+=v; return s})
   return (
-    <div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
-      <div
-        style={{
-          width: 180,
-          height: 180,
-          borderRadius: '50%',
-          background: total ? `conic-gradient(${segments.join(',')})` : 'var(--surface-3)',
-          display: 'grid',
-          placeItems: 'center',
-          position: 'relative',
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'var(--surface)', display: 'grid', placeItems: 'center', textAlign: 'center', border: '1px solid var(--border)' }}>
-          <div>
-            <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '.08em' }}>Spent</div>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>{fmt(total)}</div>
-          </div>
+    <div style={{display:'flex',gap:18,alignItems:'center',flexWrap:'wrap'}}>
+      <div style={{width:160,height:160,borderRadius:'50%',background:total?`conic-gradient(${segs.join(',')})` :'var(--surface-3)',display:'grid',placeItems:'center',flexShrink:0}}>
+        <div style={{width:84,height:84,borderRadius:'50%',background:'var(--surface)',display:'grid',placeItems:'center',textAlign:'center',border:'1px solid var(--border)'}}>
+          <div><div style={{fontSize:9,textTransform:'uppercase',color:'var(--muted)',letterSpacing:'.08em'}}>Spent</div><div style={{fontSize:13,fontWeight:800}}>{fmt(total)}</div></div>
         </div>
       </div>
-      <div style={{ flex: 1, minWidth: 220 }}>
-        {data.length ? data.map((item) => (
-          <div key={item.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: item.color, display: 'inline-block' }} />
-              <span style={{ fontSize: 13 }}>{item.label}</span>
-            </div>
-            <strong style={{ fontSize: 13 }}>{fmt(item.amount)}</strong>
+      <div style={{flex:1,minWidth:180}}>
+        {data.length ? data.map(i=>(
+          <div key={i.label} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,padding:'7px 0',borderBottom:'1px solid var(--border)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:7}}><span style={{width:9,height:9,borderRadius:'50%',background:i.color,display:'inline-block'}}/><span style={{fontSize:12}}>{i.label}</span></div>
+            <strong style={{fontSize:12}}>{fmt(i.amount)}</strong>
           </div>
-        )) : <div style={{ color: 'var(--muted)', fontSize: 13 }}>Add transactions to see your spending breakdown.</div>}
+        )) : <div style={{color:'var(--muted)',fontSize:13}}>Log transactions to see breakdown.</div>}
       </div>
     </div>
   )
 }
 
-function Bars({ items }) {
-  const max = Math.max(...items.map(i => i.amount), 1)
+function BarChart({items}){
+  const max=Math.max(...items.map(i=>i.amount),1)
   return (
-    <div style={{ display: 'grid', gap: 12 }}>
-      {items.map((item) => (
+    <div style={{display:'grid',gap:10}}>
+      {items.map(item=>(
         <div key={item.label}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
-            <span style={{ color: 'var(--muted)' }}>{item.label}</span>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:5}}>
+            <span style={{color:'var(--muted)'}}>{item.label}</span>
             <strong>{fmt(item.amount)}</strong>
           </div>
-          <div style={{ height: 10, borderRadius: 999, background: 'var(--surface-3)', overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${(item.amount / max) * 100}%`, background: item.color, borderRadius: 999 }} />
+          <div style={{height:9,borderRadius:999,background:'var(--surface-3)',overflow:'hidden'}}>
+            <div style={{height:'100%',width:`${(item.amount/max)*100}%`,background:item.color,borderRadius:999}}/>
           </div>
         </div>
       ))}
@@ -126,484 +61,452 @@ function Bars({ items }) {
   )
 }
 
-export default function Home() {
-  const { data: session, status } = useSession()
-  const [active, setActive] = useState('Dashboard')
-  const [budgets, setBudgets] = useState(DEFAULT_BUDGETS)
-  const [transactions, setTransactions] = useState([])
-  const [goals, setGoals] = useState(DEFAULT_GOALS)
-  const [assets, setAssets] = useState(DEFAULT_ASSETS)
-  const [debts, setDebts] = useState(DEFAULT_DEBTS)
-  const [month, setMonth] = useState(monthKey())
-  const [showTxModal, setShowTxModal] = useState(false)
-  const [showBudgetModal, setShowBudgetModal] = useState(false)
-  const [showAssetModal, setShowAssetModal] = useState(false)
-  const [showDebtModal, setShowDebtModal] = useState(false)
-  const [editingBudget, setEditingBudget] = useState({ key: '', value: '' })
-  const [tx, setTx] = useState({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', category: 'Food & Groceries', type: 'expense', recurring: false })
-  const [assetForm, setAssetForm] = useState({ name: '', amount: '' })
-  const [debtForm, setDebtForm] = useState({ name: '', amount: '' })
-
-  useEffect(() => {
-    const stored = localStorage.getItem('budget-pro-data-v2')
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      setBudgets(parsed.budgets || DEFAULT_BUDGETS)
-      setTransactions(parsed.transactions || [])
-      setGoals(parsed.goals || DEFAULT_GOALS)
-      setAssets(parsed.assets || DEFAULT_ASSETS)
-      setDebts(parsed.debts || DEFAULT_DEBTS)
-    }
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem('budget-pro-data-v2', JSON.stringify({ budgets, transactions, goals, assets, debts }))
-  }, [budgets, transactions, goals, assets, debts])
-
-  const currentTx = useMemo(() => transactions.filter((t) => t.month === month), [transactions, month])
-  const income = currentTx.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
-  const spending = currentTx.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
-  const available = income - spending
-  const savingsRate = income ? ((income - spending) / income) * 100 : 0
-  const recurringBills = currentTx.filter(t => t.recurring && t.type === 'expense').sort((a, b) => new Date(a.date) - new Date(b.date))
-  const byCategory = Object.entries(budgets).map(([name, limit], idx) => {
-    const amount = currentTx.filter(t => t.category === name && t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
-    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6', '#f97316', '#ec4899', '#84cc16', '#6366f1']
-    return { label: name, amount, limit, color: colors[idx % colors.length] }
-  })
-  const topSpend = byCategory.filter(i => i.amount > 0).sort((a, b) => b.amount - a.amount).slice(0, 5)
-  const totalAssets = assets.reduce((s, a) => s + Number(a.amount), 0)
-  const totalDebts = debts.reduce((s, d) => s + Number(d.amount), 0)
-  const netWorth = totalAssets - totalDebts
-
-  const monthOptions = Array.from({ length: 12 }).map((_, i) => {
-    const d = new Date()
-    d.setMonth(d.getMonth() - i)
-    return monthKey(d)
-  })
-
-  const addTransaction = () => {
-    if (!tx.description || !tx.amount) return
-    const m = tx.date.slice(0, 7)
-    const item = { ...tx, id: Date.now(), amount: Number(tx.amount), month: m }
-    setTransactions(prev => [item, ...prev])
-    setTx({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', category: 'Food & Groceries', type: 'expense', recurring: false })
-    setShowTxModal(false)
-  }
-
-  const seedRecurring = () => {
-    const [year, mon] = month.split('-')
-    const seeded = recurringTemplates.map((b, i) => ({
-      id: Date.now() + i,
-      description: b.name,
-      amount: b.amount,
-      category: b.category,
-      type: 'expense',
-      recurring: true,
-      date: `${year}-${mon}-${String(b.day).padStart(2, '0')}`,
-      month,
-    }))
-    setTransactions(prev => {
-      const existing = new Set(prev.filter(t => t.month === month).map(t => t.description + t.amount))
-      const fresh = seeded.filter(t => !existing.has(t.description + t.amount))
-      return [...fresh, ...prev]
-    })
-  }
-
-  const saveBudget = () => {
-    setBudgets(prev => ({ ...prev, [editingBudget.key]: Number(editingBudget.value || 0) }))
-    setShowBudgetModal(false)
-  }
-
-  const addAsset = () => {
-    if (!assetForm.name || !assetForm.amount) return
-    setAssets(prev => [...prev, { name: assetForm.name, amount: Number(assetForm.amount) }])
-    setAssetForm({ name: '', amount: '' })
-    setShowAssetModal(false)
-  }
-
-  const addDebt = () => {
-    if (!debtForm.name || !debtForm.amount) return
-    setDebts(prev => [...prev, { name: debtForm.name, amount: Number(debtForm.amount) }])
-    setDebtForm({ name: '', amount: '' })
-    setShowDebtModal(false)
-  }
-
-  const coachMessage = useMemo(() => {
-    if (!income) return 'Log income first so I can help you build a real zero-based plan.'
-    if (savingsRate < 10) return 'Your savings rate is low this month. Trim your top spending category or move extra income to Savings.'
-    if (topSpend[0]?.amount > (topSpend[0]?.limit || 0)) return `You are over budget in ${topSpend[0].label}. Adjust that category or move money from a lower-priority bucket.`
-    return 'You are in a solid spot this month. Keep recurring bills funded and move extra cash toward your property or emergency goals.'
-  }, [income, savingsRate, topSpend])
-
-  if (status === 'loading') return null
-  if (!session) {
-    return (
-      <>
-        <Head><title>Budget Command Center Pro</title></Head>
-        <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#0b1020', color: '#fff', fontFamily: 'Inter, system-ui, sans-serif', padding: 24 }}>
-          <div style={{ width: '100%', maxWidth: 520, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 24, padding: 32 }}>
-            <div style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '.16em', color: '#93c5fd', marginBottom: 12 }}>Budget Pro</div>
-            <h1 style={{ fontSize: 34, lineHeight: 1.05, margin: 0, marginBottom: 12 }}>Your personal money command center.</h1>
-            <p style={{ color: 'rgba(255,255,255,.72)', lineHeight: 1.7, marginBottom: 24 }}>Track cash flow, set category budgets, watch recurring bills, and build net worth in one place.</p>
-            <button onClick={() => signIn('google')} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 18px', fontWeight: 700, cursor: 'pointer' }}>Continue with Google</button>
-          </div>
-        </div>
-      </>
-    )
-  }
-
+function Modal({onClose,title,children}){
   return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.65)',display:'grid',placeItems:'center',padding:16,zIndex:100}} onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
+      <div style={{width:'100%',maxWidth:460,background:'var(--surface)',border:'1px solid var(--border-2)',borderRadius:20,padding:24}}>
+        <div style={{fontSize:18,fontWeight:800,marginBottom:16}}>{title}</div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+export default function Home(){
+  const {data:session,status}=useSession()
+  const [active,setActive]=useState('Dashboard')
+  const [budgets,setBudgets]=useState({})           // {category: limit}
+  const [transactions,setTransactions]=useState([]) // [{id,description,amount,category,type,date,month,recurring}]
+  const [goals,setGoals]=useState([])               // [{id,name,target,current}]
+  const [assets,setAssets]=useState([])             // [{id,name,amount}]
+  const [debts,setDebts]=useState([])               // [{id,name,amount}]
+  const [month,setMonth]=useState(monthKey())
+  const [modal,setModal]=useState(null)
+  const [txForm,setTxForm]=useState({date:new Date().toISOString().slice(0,10),description:'',amount:'',category:DEFAULT_BUDGET_CATS[0],type:'expense',recurring:false})
+  const [goalForm,setGoalForm]=useState({name:'',target:'',current:''})
+  const [assetForm,setAssetForm]=useState({name:'',amount:''})
+  const [debtForm,setDebtForm]=useState({name:'',amount:''})
+  const [budgetEdit,setBudgetEdit]=useState({key:'',value:''})
+
+  useEffect(()=>{
+    try{
+      const d=localStorage.getItem('bcp-v3')
+      if(d){const p=JSON.parse(d);setBudgets(p.budgets||{});setTransactions(p.transactions||[]);setGoals(p.goals||[]);setAssets(p.assets||[]);setDebts(p.debts||[])}
+    }catch(e){}
+  },[])
+
+  useEffect(()=>{
+    try{localStorage.setItem('bcp-v3',JSON.stringify({budgets,transactions,goals,assets,debts}))}catch(e){}
+  },[budgets,transactions,goals,assets,debts])
+
+  const curTx = useMemo(()=>transactions.filter(t=>t.month===month),[transactions,month])
+  const income = curTx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0)
+  const spending = curTx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0)
+  const available = income-spending
+  const savingsRate = income?((income-spending)/income)*100:0
+  const allCats = [...new Set([...DEFAULT_BUDGET_CATS,...Object.keys(budgets)])]
+  const byCategory = allCats.map((name,i)=>({
+    label:name, amount:curTx.filter(t=>t.category===name&&t.type==='expense').reduce((s,t)=>s+t.amount,0),
+    limit:budgets[name]||0, color:COLORS[i%COLORS.length]
+  }))
+  const topSpend = byCategory.filter(i=>i.amount>0).sort((a,b)=>b.amount-a.amount).slice(0,5)
+  const recurringBills = curTx.filter(t=>t.recurring&&t.type==='expense').sort((a,b)=>new Date(a.date)-new Date(b.date))
+  const totalAssets = assets.reduce((s,a)=>s+a.amount,0)
+  const totalDebts = debts.reduce((s,d)=>s+d.amount,0)
+  const netWorth = totalAssets-totalDebts
+  const monthOptions = Array.from({length:12}).map((_,i)=>{const d=new Date();d.setMonth(d.getMonth()-i);return monthKey(d)})
+
+  const addTx=()=>{
+    if(!txForm.description||!txForm.amount)return
+    const item={...txForm,id:Date.now(),amount:Number(txForm.amount),month:txForm.date.slice(0,7)}
+    setTransactions(p=>[item,...p])
+    setTxForm({date:new Date().toISOString().slice(0,10),description:'',amount:'',category:DEFAULT_BUDGET_CATS[0],type:'expense',recurring:false})
+    setModal(null)
+  }
+  const addGoal=()=>{
+    if(!goalForm.name||!goalForm.target)return
+    setGoals(p=>[...p,{id:Date.now(),name:goalForm.name,target:Number(goalForm.target),current:Number(goalForm.current||0)}])
+    setGoalForm({name:'',target:'',current:''})
+    setModal(null)
+  }
+  const addAsset=()=>{
+    if(!assetForm.name||!assetForm.amount)return
+    setAssets(p=>[...p,{id:Date.now(),name:assetForm.name,amount:Number(assetForm.amount)}])
+    setAssetForm({name:'',amount:''})
+    setModal(null)
+  }
+  const addDebt=()=>{
+    if(!debtForm.name||!debtForm.amount)return
+    setDebts(p=>[...p,{id:Date.now(),name:debtForm.name,amount:Number(debtForm.amount)}])
+    setDebtForm({name:'',amount:''})
+    setModal(null)
+  }
+  const saveBudget=()=>{
+    setBudgets(p=>({...p,[budgetEdit.key]:Number(budgetEdit.value||0)}))
+    setModal(null)
+  }
+  const delTx=id=>setTransactions(p=>p.filter(t=>t.id!==id))
+  const delGoal=id=>setGoals(p=>p.filter(g=>g.id!==id))
+  const delAsset=id=>setAssets(p=>p.filter(a=>a.id!==id))
+  const delDebt=id=>setDebts(p=>p.filter(d=>d.id!==id))
+
+  const coachMsg = useMemo(()=>{
+    if(!income)return 'Start by logging your income for the month so I can help you build a zero-based budget.'
+    if(savingsRate<10)return `Your savings rate is ${pct(savingsRate)} — try to hit at least 15%. Look for your biggest expense category and see if you can trim it.`
+    if(topSpend[0]?.amount>(topSpend[0]?.limit||Infinity))return `You are over budget in ${topSpend[0].label}. Adjust that limit or cut spending there this month.`
+    return `Good work — savings rate is ${pct(savingsRate)}. Keep recurring bills funded and push extra money toward your highest-priority goal.`
+  },[income,savingsRate,topSpend])
+
+  const iBtn=(label,onClick,color='var(--blue)')=>(<button onClick={onClick} style={{background:color,color:'#fff',border:'none',borderRadius:10,padding:'10px 14px',fontWeight:700,cursor:'pointer',fontSize:13}}>{label}</button>)
+  const oBtn=(label,onClick)=>(<button onClick={onClick} style={{background:'var(--surface-2)',color:'var(--text)',border:'1px solid var(--border-2)',borderRadius:10,padding:'10px 14px',cursor:'pointer',fontSize:13}}>{label}</button>)
+  const inp=(val,onChange,props={})=>(<input value={val} onChange={e=>onChange(e.target.value)} style={{background:'var(--surface-2)',border:'1px solid var(--border-2)',color:'var(--text)',borderRadius:10,padding:11,width:'100%'}} {...props}/>)
+
+  if(status==='loading')return null
+  if(!session)return(
     <>
-      <Head>
-        <title>Budget Command Center Pro</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </Head>
+      <Head><title>Budget Command Center Pro</title></Head>
+      <div style={{minHeight:'100vh',display:'grid',placeItems:'center',background:'#080e1c',fontFamily:'Inter,system-ui,sans-serif',padding:24}}>
+        <div style={{width:'100%',maxWidth:480,background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:24,padding:36}}>
+          <div style={{fontSize:12,textTransform:'uppercase',letterSpacing:'.16em',color:'#93c5fd',marginBottom:10}}>Budget Pro</div>
+          <h1 style={{fontSize:32,fontWeight:900,color:'#fff',margin:'0 0 12px',lineHeight:1.1}}>Your personal money command center.</h1>
+          <p style={{color:'rgba(255,255,255,.65)',lineHeight:1.7,marginBottom:28}}>Track income, budget by category, watch bills, set goals, and build net worth — all in one place.</p>
+          <button onClick={()=>signIn('google')} style={{background:'#2563eb',color:'#fff',border:'none',borderRadius:12,padding:'14px 20px',fontWeight:800,cursor:'pointer',fontSize:15}}>Continue with Google →</button>
+        </div>
+      </div>
+    </>
+  )
+
+  return(
+    <>
+      <Head><title>Budget Command Center Pro</title><meta name="viewport" content="width=device-width,initial-scale=1"/></Head>
       <style jsx global>{`
-        * { box-sizing: border-box; }
-        html, body, #__next { margin: 0; min-height: 100%; }
-        body {
-          --bg: #0b1220;
-          --surface: #121a2b;
-          --surface-2: #182235;
-          --surface-3: #22304a;
-          --border: rgba(148, 163, 184, .16);
-          --border-2: rgba(148, 163, 184, .24);
-          --text: #e5eefc;
-          --muted: #93a4bf;
-          --blue: #3b82f6;
-          --blue-dim: rgba(59,130,246,.12);
-          --green: #10b981;
-          --yellow: #f59e0b;
-          --red: #ef4444;
-          --purple: #8b5cf6;
-          --r-sm: 10px;
-          --r-md: 14px;
-          --r-lg: 18px;
-          --r-xl: 24px;
-          background: var(--bg);
-          color: var(--text);
-          font-family: Inter, system-ui, sans-serif;
+        *{box-sizing:border-box;}html,body,#__next{margin:0;min-height:100%;}
+        body{
+          --bg:#080e1c;--surface:#0f1826;--surface-2:#162033;--surface-3:#1e2d45;
+          --border:rgba(148,163,184,.14);--border-2:rgba(148,163,184,.22);
+          --text:#ddeeff;--muted:#7a90ab;
+          --blue:#3b82f6;--blue-dim:rgba(59,130,246,.12);
+          --green:#10b981;--red:#ef4444;--yellow:#f59e0b;
+          --r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:20px;
+          background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;
         }
-        button, input, select { font: inherit; }
-        @media (max-width: 900px) {
-          .layout { flex-direction: column; }
-          .sidebar { width: 100% !important; border-right: none !important; border-bottom: 1px solid var(--border); }
-          .navWrap { display: flex; overflow: auto; padding-bottom: 8px; }
-          .contentWrap { padding: 16px !important; }
-          .grid2 { grid-template-columns: 1fr !important; }
-          .topbar { padding: 14px 16px !important; align-items: flex-start !important; gap: 10px; flex-direction: column; }
+        button,input,select{font:inherit;}
+        @media(max-width:860px){
+          .layout{flex-direction:column!important;}
+          .sidebar{width:100%!important;border-right:none!important;border-bottom:1px solid var(--border);}
+          .navrow{display:flex;overflow:auto;padding-bottom:6px;}
+          .g2{grid-template-columns:1fr!important;}
+          .topbar{flex-direction:column;align-items:flex-start!important;gap:10px;padding:14px 16px!important;}
+          .content{padding:14px!important;}
         }
       `}</style>
-
-      <div className="layout" style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)' }}>
-        <aside className="sidebar" style={{ width: 240, background: 'var(--surface)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '22px 18px', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 17, fontWeight: 800 }}>💰 Budget Pro</div>
-            <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.16em', marginTop: 4 }}>Command Center</div>
+      <div className="layout" style={{display:'flex',minHeight:'100vh'}}>
+        <aside className="sidebar" style={{width:230,background:'var(--surface)',borderRight:'1px solid var(--border)',display:'flex',flexDirection:'column',flexShrink:0}}>
+          <div style={{padding:'22px 18px',borderBottom:'1px solid var(--border)'}}>
+            <div style={{fontSize:17,fontWeight:900}}>💰 Budget Pro</div>
+            <div style={{fontSize:10,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.18em',marginTop:4}}>Command Center</div>
           </div>
-          <div className="navWrap" style={{ padding: 12 }}>
-            {NAV.map((item) => {
-              const on = active === item.label
-              return (
-                <button key={item.label} onClick={() => setActive(item.label)} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 10, padding: '11px 12px', marginBottom: 6, background: on ? 'var(--blue-dim)' : 'transparent', color: on ? '#fff' : 'var(--muted)', border: `1px solid ${on ? 'rgba(59,130,246,.24)' : 'transparent'}`, borderRadius: 12, cursor: 'pointer', textAlign: 'left' }}>
-                  <span>{item.icon}</span><span style={{ fontSize: 13, fontWeight: on ? 700 : 500 }}>{item.label}</span>
-                </button>
-              )
+          <nav className="navrow" style={{padding:10}}>
+            {NAV.map(item=>{
+              const on=active===item.label
+              return(<button key={item.label} onClick={()=>setActive(item.label)} style={{display:'flex',width:'100%',alignItems:'center',gap:9,padding:'10px 12px',marginBottom:4,background:on?'var(--blue-dim)':'transparent',color:on?'#fff':'var(--muted)',border:`1px solid ${on?'rgba(59,130,246,.28)':'transparent'}`,borderRadius:12,cursor:'pointer',textAlign:'left',fontSize:13,fontWeight:on?700:500}}>
+                <span>{item.icon}</span><span>{item.label}</span>
+              </button>)
             })}
+          </nav>
+          <div style={{marginTop:'auto',padding:'16px 18px',borderTop:'1px solid var(--border)',fontSize:12}}>
+            <div style={{color:'var(--muted)',marginBottom:6}}>{session.user?.name}</div>
+            <button onClick={()=>signOut()} style={{background:'transparent',color:'var(--muted)',border:'1px solid var(--border-2)',borderRadius:8,padding:'8px 10px',cursor:'pointer',fontSize:11}}>Sign out</button>
           </div>
         </aside>
 
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <div className="topbar" style={{ padding: '16px 24px', background: 'var(--surface)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <main style={{flex:1,display:'flex',flexDirection:'column',overflow:'auto'}}>
+          <div className="topbar" style={{padding:'16px 24px',background:'var(--surface)',borderBottom:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <div>
-              <div style={{ fontSize: 19, fontWeight: 800 }}>{active}</div>
-              <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 4 }}>{labelForMonth(month)}</div>
+              <div style={{fontSize:20,fontWeight:900}}>{active}</div>
+              <div style={{color:'var(--muted)',fontSize:12,marginTop:3}}>{labelForMonth(month)}</div>
             </div>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <select value={month} onChange={(e) => setMonth(e.target.value)} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '9px 12px' }}>
-                {monthOptions.map(m => <option key={m} value={m}>{labelForMonth(m)}</option>)}
+            <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+              <select value={month} onChange={e=>setMonth(e.target.value)} style={{background:'var(--surface-2)',color:'var(--text)',border:'1px solid var(--border-2)',borderRadius:10,padding:'9px 12px',fontSize:13}}>
+                {monthOptions.map(m=><option key={m} value={m}>{labelForMonth(m)}</option>)}
               </select>
-              <button onClick={() => setShowTxModal(true)} style={{ background: 'var(--blue)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 14px', fontWeight: 700, cursor: 'pointer' }}>+ Add Transaction</button>
-              <button onClick={() => signOut()} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '10px 14px', cursor: 'pointer' }}>Sign out</button>
+              {iBtn('+ Add Transaction',()=>setModal('tx'))}
             </div>
           </div>
 
-          <div className="contentWrap" style={{ padding: 24 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12, marginBottom: 16 }}>
+          <div className="content" style={{padding:22,flex:1}}>
+            {/* KPI Row */}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:12,marginBottom:18}}>
               {[
-                ['Available to Budget', fmt(available), available >= 0 ? 'Cash left this month' : 'Over budget right now', available >= 0 ? 'var(--green)' : 'var(--red)'],
-                ['Monthly Income', fmt(income), `${currentTx.filter(t => t.type === 'income').length} deposits logged`, 'var(--muted)'],
-                ['Monthly Spending', fmt(spending), `${currentTx.filter(t => t.type === 'expense').length} transactions logged`, 'var(--muted)'],
-                ['Savings Rate', pct(savingsRate), income ? 'Income not spent' : 'Log income first', savingsRate >= 15 ? 'var(--green)' : 'var(--muted)'],
-              ].map(([label, value, meta, color]) => (
-                <div key={label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: '16px 18px' }}>
-                  <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--muted)', marginBottom: 8 }}>{label}</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-.03em' }}>{value}</div>
-                  <div style={{ fontSize: 12, color }}>{meta}</div>
+                ['Available to Budget',fmt(available),available>=0?'Cash left':'Over budget',available>=0?'var(--green)':'var(--red)'],
+                ['Monthly Income',fmt(income),`${curTx.filter(t=>t.type==='income').length} deposits`,'var(--muted)'],
+                ['Monthly Spending',fmt(spending),`${curTx.filter(t=>t.type==='expense').length} transactions`,'var(--muted)'],
+                ['Savings Rate',pct(savingsRate),income?'Of income saved':'Log income first',savingsRate>=15?'var(--green)':'var(--muted)'],
+              ].map(([label,value,meta,color])=>(
+                <div key={label} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:'16px 18px'}}>
+                  <div style={{fontSize:9,textTransform:'uppercase',letterSpacing:'.12em',color:'var(--muted)',marginBottom:8}}>{label}</div>
+                  <div style={{fontSize:26,fontWeight:900,letterSpacing:'-.03em'}}>{value}</div>
+                  <div style={{fontSize:12,color,marginTop:4}}>{meta}</div>
                 </div>
               ))}
             </div>
 
-            {active === 'Dashboard' && (
-              <div className="grid2" style={{ display: 'grid', gridTemplateColumns: '1.25fr .95fr', gap: 14 }}>
-                <section style={{ display: 'grid', gap: 14 }}>
-                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                      <div style={{ fontSize: 16, fontWeight: 800 }}>Spending Breakdown</div>
-                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>Top categories this month</div>
+            {/* DASHBOARD */}
+            {active==='Dashboard'&&(
+              <div className="g2" style={{display:'grid',gridTemplateColumns:'1.3fr 1fr',gap:14}}>
+                <div style={{display:'grid',gap:14}}>
+                  <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:20}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+                      <div style={{fontSize:15,fontWeight:800}}>Spending Breakdown</div>
                     </div>
-                    <CircleChart data={topSpend} />
+                    <DonutChart data={topSpend}/>
                   </div>
-                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                      <div style={{ fontSize: 16, fontWeight: 800 }}>Budget Categories</div>
-                      <button onClick={() => setActive('Budget')} style={{ background: 'transparent', color: 'var(--blue)', border: 'none', cursor: 'pointer', fontWeight: 700 }}>Edit budgets</button>
+                  <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:20}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+                      <div style={{fontSize:15,fontWeight:800}}>Budget Categories</div>
+                      <button onClick={()=>setActive('Budget')} style={{background:'transparent',color:'var(--blue)',border:'none',cursor:'pointer',fontWeight:700,fontSize:13}}>Edit budgets</button>
                     </div>
-                    <div>
-                      {byCategory.map(item => {
-                        const used = item.limit ? (item.amount / item.limit) * 100 : 0
-                        return (
-                          <div key={item.label} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
-                              <div style={{ fontSize: 13, fontWeight: 600 }}>{item.label}</div>
-                              <div style={{ fontSize: 12, color: used > 100 ? 'var(--red)' : 'var(--muted)' }}>{fmt(item.amount)} / {fmt(item.limit)}</div>
-                            </div>
-                            <div style={{ height: 8, borderRadius: 999, background: 'var(--surface-3)', marginTop: 6, overflow: 'hidden' }}>
-                              <div style={{ height: '100%', width: `${Math.min(used, 100)}%`, background: used > 100 ? 'var(--red)' : item.color, borderRadius: 999 }} />
-                            </div>
+                    {byCategory.map((item,i)=>{
+                      const used=item.limit?(item.amount/item.limit)*100:0
+                      return(
+                        <div key={item.label} style={{padding:'10px 0',borderBottom:'1px solid var(--border)'}}>
+                          <div style={{display:'flex',justifyContent:'space-between',gap:12,marginBottom:5}}>
+                            <div style={{fontSize:13,fontWeight:600}}>{item.label}</div>
+                            <div style={{fontSize:12,color:used>100?'var(--red)':'var(--muted)'}}>{fmt(item.amount)}{item.limit?` / ${fmt(item.limit)}`:''}</div>
                           </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </section>
-
-                <section style={{ display: 'grid', gap: 14 }}>
-                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
-                    <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 14 }}>Top Spending</div>
-                    {topSpend.length ? <Bars items={topSpend} /> : <div style={{ color: 'var(--muted)', fontSize: 13 }}>No expense data yet for this month.</div>}
-                  </div>
-                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                      <div style={{ fontSize: 16, fontWeight: 800 }}>Recurring Bills</div>
-                      <button onClick={seedRecurring} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '8px 10px', cursor: 'pointer' }}>Auto-add</button>
-                    </div>
-                    {recurringBills.length ? recurringBills.map(bill => (
-                      <div key={bill.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 700 }}>{bill.description}</div>
-                          <div style={{ fontSize: 12, color: 'var(--muted)' }}>{bill.date} • {bill.category}</div>
+                          {item.limit>0&&<div style={{height:7,borderRadius:999,background:'var(--surface-3)',overflow:'hidden'}}><div style={{height:'100%',width:`${Math.min(used,100)}%`,background:used>100?'var(--red)':item.color,borderRadius:999}}/></div>}
                         </div>
-                        <div style={{ fontSize: 13, fontWeight: 700 }}>{fmt(bill.amount)}</div>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div style={{display:'grid',gap:14}}>
+                  <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:20}}>
+                    <div style={{fontSize:15,fontWeight:800,marginBottom:14}}>Top Spending</div>
+                    {topSpend.length?<BarChart items={topSpend}/>:<div style={{color:'var(--muted)',fontSize:13}}>No expenses logged yet this month.</div>}
+                  </div>
+                  <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:20}}>
+                    <div style={{fontSize:15,fontWeight:800,marginBottom:12}}>Recurring Bills</div>
+                    {recurringBills.length?recurringBills.map(b=>(
+                      <div key={b.id} style={{display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid var(--border)'}}>
+                        <div><div style={{fontSize:13,fontWeight:700}}>{b.description}</div><div style={{fontSize:11,color:'var(--muted)'}}>{b.date}</div></div>
+                        <div style={{fontWeight:700}}>{fmt(b.amount)}</div>
                       </div>
-                    )) : <div style={{ color: 'var(--muted)', fontSize: 13 }}>No recurring bills loaded for this month yet.</div>}
+                    )):<div style={{color:'var(--muted)',fontSize:13}}>Add transactions and mark them recurring to see them here.</div>}
                   </div>
-                  <div style={{ background: 'linear-gradient(135deg, rgba(59,130,246,.18), rgba(16,185,129,.14))', border: '1px solid rgba(59,130,246,.22)', borderRadius: 18, padding: 20 }}>
-                    <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.1em', color: '#bfdbfe', marginBottom: 8 }}>AI Coach</div>
-                    <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 10 }}>This month&apos;s guidance</div>
-                    <div style={{ color: '#dbeafe', lineHeight: 1.7, fontSize: 14 }}>{coachMessage}</div>
+                  <div style={{background:'linear-gradient(135deg,rgba(59,130,246,.15),rgba(16,185,129,.1))',border:'1px solid rgba(59,130,246,.2)',borderRadius:16,padding:20}}>
+                    <div style={{fontSize:11,textTransform:'uppercase',letterSpacing:'.12em',color:'#93c5fd',marginBottom:8}}>AI Coach</div>
+                    <div style={{color:'#dbeafe',lineHeight:1.7,fontSize:14}}>{coachMsg}</div>
                   </div>
-                </section>
+                </div>
               </div>
             )}
 
-            {active === 'Budget' && (
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
-                <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 14 }}>Edit Monthly Budgets</div>
-                {Object.entries(budgets).map(([key, value], idx) => {
-                  const spent = byCategory.find(x => x.label === key)?.amount || 0
-                  const used = value ? (spent / value) * 100 : 0
-                  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6', '#f97316', '#ec4899', '#84cc16', '#6366f1']
-                  return (
-                    <div key={key} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-                        <div>
-                          <div style={{ fontSize: 14, fontWeight: 700 }}>{key}</div>
-                          <div style={{ fontSize: 12, color: 'var(--muted)' }}>{fmt(spent)} spent</div>
-                        </div>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                          <strong>{fmt(value)}</strong>
-                          <button onClick={() => { setEditingBudget({ key, value }); setShowBudgetModal(true) }} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '8px 10px', cursor: 'pointer' }}>Edit</button>
+            {/* BUDGET */}
+            {active==='Budget'&&(
+              <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:20}}>
+                <div style={{fontSize:15,fontWeight:800,marginBottom:14}}>Monthly Budget Limits</div>
+                {allCats.map((key,idx)=>{
+                  const limit=budgets[key]||0
+                  const spent=byCategory.find(x=>x.label===key)?.amount||0
+                  const used=limit?(spent/limit)*100:0
+                  return(
+                    <div key={key} style={{padding:'12px 0',borderBottom:'1px solid var(--border)'}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,marginBottom:6}}>
+                        <div><div style={{fontSize:14,fontWeight:700}}>{key}</div><div style={{fontSize:12,color:'var(--muted)'}}>{fmt(spent)} spent</div></div>
+                        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                          <span style={{fontWeight:700}}>{limit?fmt(limit):'Not set'}</span>
+                          <button onClick={()=>{setBudgetEdit({key,value:limit||''});setModal('budget')}} style={{background:'var(--surface-2)',color:'var(--text)',border:'1px solid var(--border-2)',borderRadius:9,padding:'7px 10px',cursor:'pointer',fontSize:12}}>Edit</button>
                         </div>
                       </div>
-                      <div style={{ height: 10, background: 'var(--surface-3)', borderRadius: 999, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${Math.min(used, 100)}%`, background: used > 100 ? 'var(--red)' : colors[idx % colors.length], borderRadius: 999 }} />
-                      </div>
+                      {limit>0&&<div style={{height:9,background:'var(--surface-3)',borderRadius:999,overflow:'hidden'}}><div style={{height:'100%',width:`${Math.min(used,100)}%`,background:used>100?'var(--red)':COLORS[idx%COLORS.length],borderRadius:999}}/></div>}
                     </div>
                   )
                 })}
               </div>
             )}
 
-            {active === 'Transactions' && (
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
-                <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 14 }}>Transactions</div>
-                {currentTx.length ? currentTx.map((item) => (
-                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+            {/* TRANSACTIONS */}
+            {active==='Transactions'&&(
+              <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:20}}>
+                <div style={{fontSize:15,fontWeight:800,marginBottom:14}}>Transactions — {labelForMonth(month)}</div>
+                {curTx.length?curTx.map(item=>(
+                  <div key={item.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,padding:'12px 0',borderBottom:'1px solid var(--border)'}}>
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 700 }}>{item.description}</div>
-                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>{item.date} • {item.category}{item.recurring ? ' • recurring' : ''}</div>
+                      <div style={{fontSize:14,fontWeight:700}}>{item.description}</div>
+                      <div style={{fontSize:11,color:'var(--muted)'}}>{item.date} • {item.category}{item.recurring?' • recurring':''}</div>
                     </div>
-                    <div style={{ fontWeight: 800, color: item.type === 'income' ? 'var(--green)' : 'var(--text)' }}>{item.type === 'income' ? '+' : '-'}{fmt(item.amount).replace('$', '')}</div>
+                    <div style={{display:'flex',alignItems:'center',gap:10}}>
+                      <div style={{fontWeight:800,color:item.type==='income'?'var(--green)':'var(--text)'}}>{item.type==='income'?'+':'-'}{fmt(item.amount).replace('$','')}</div>
+                      <button onClick={()=>delTx(item.id)} style={{background:'transparent',color:'var(--muted)',border:'none',cursor:'pointer',fontSize:16}} title="Delete">×</button>
+                    </div>
                   </div>
-                )) : <div style={{ color: 'var(--muted)', fontSize: 13 }}>No transactions in {labelForMonth(month)} yet.</div>}
+                )):<div style={{color:'var(--muted)',fontSize:13,textAlign:'center',padding:40}}>No transactions in {labelForMonth(month)} yet. Click "+ Add Transaction" to start.</div>}
               </div>
             )}
 
-            {active === 'Bills' && (
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                  <div style={{ fontSize: 16, fontWeight: 800 }}>Recurring & Upcoming Bills</div>
-                  <button onClick={seedRecurring} style={{ background: 'var(--blue)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', fontWeight: 700 }}>Load default bills</button>
+            {/* BILLS */}
+            {active==='Bills'&&(
+              <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:20}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+                  <div style={{fontSize:15,fontWeight:800}}>Recurring Bills</div>
+                  <button onClick={()=>setModal('tx')} style={{background:'var(--blue)',color:'#fff',border:'none',borderRadius:10,padding:'9px 12px',cursor:'pointer',fontWeight:700,fontSize:12}}>+ Add Bill</button>
                 </div>
-                {recurringBills.length ? recurringBills.map((bill) => (
-                  <div key={bill.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 700 }}>{bill.description}</div>
-                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>Due {bill.date} • {bill.category}</div>
-                    </div>
-                    <strong>{fmt(bill.amount)}</strong>
+                {recurringBills.length?recurringBills.map(bill=>(
+                  <div key={bill.id} style={{display:'flex',justifyContent:'space-between',gap:12,padding:'12px 0',borderBottom:'1px solid var(--border)'}}>
+                    <div><div style={{fontSize:14,fontWeight:700}}>{bill.description}</div><div style={{fontSize:11,color:'var(--muted)'}}>Due {bill.date} • {bill.category}</div></div>
+                    <div style={{display:'flex',alignItems:'center',gap:10}}><strong>{fmt(bill.amount)}</strong><button onClick={()=>delTx(bill.id)} style={{background:'transparent',color:'var(--muted)',border:'none',cursor:'pointer',fontSize:16}}>×</button></div>
                   </div>
-                )) : <div style={{ color: 'var(--muted)', fontSize: 13 }}>No recurring bills for this month. Click “Load default bills” to add them.</div>}
+                )):<div style={{color:'var(--muted)',fontSize:13,textAlign:'center',padding:40}}>No recurring bills yet. Add a transaction and check "Mark as recurring" to have it appear here.</div>}
               </div>
             )}
 
-            {active === 'Goals' && (
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
-                <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 14 }}>Savings Goals</div>
-                {goals.map((goal) => {
-                  const progress = goal.target ? (goal.current / goal.target) * 100 : 0
-                  return (
-                    <div key={goal.name} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, gap: 12 }}>
-                        <div>
-                          <div style={{ fontSize: 14, fontWeight: 700 }}>{goal.name}</div>
-                          <div style={{ fontSize: 12, color: 'var(--muted)' }}>{fmt(goal.current)} saved of {fmt(goal.target)}</div>
-                        </div>
-                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>{pct(progress)}</div>
+            {/* GOALS */}
+            {active==='Goals'&&(
+              <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:20}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+                  <div style={{fontSize:15,fontWeight:800}}>Savings Goals</div>
+                  {iBtn('+ Add Goal',()=>setModal('goal'))}
+                </div>
+                {goals.length?goals.map(goal=>{
+                  const progress=goal.target?(goal.current/goal.target)*100:0
+                  return(
+                    <div key={goal.id} style={{padding:'12px 0',borderBottom:'1px solid var(--border)'}}>
+                      <div style={{display:'flex',justifyContent:'space-between',gap:12,marginBottom:6}}>
+                        <div><div style={{fontSize:14,fontWeight:700}}>{goal.name}</div><div style={{fontSize:12,color:'var(--muted)'}}>{fmt(goal.current)} saved of {fmt(goal.target)}</div></div>
+                        <div style={{display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:12,color:'var(--muted)'}}>{pct(progress)}</span><button onClick={()=>delGoal(goal.id)} style={{background:'transparent',color:'var(--muted)',border:'none',cursor:'pointer',fontSize:16}}>×</button></div>
                       </div>
-                      <div style={{ height: 10, background: 'var(--surface-3)', borderRadius: 999, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${Math.min(progress, 100)}%`, background: 'var(--green)', borderRadius: 999 }} />
-                      </div>
+                      <div style={{height:9,background:'var(--surface-3)',borderRadius:999,overflow:'hidden'}}><div style={{height:'100%',width:`${Math.min(progress,100)}%`,background:'var(--green)',borderRadius:999}}/></div>
                     </div>
                   )
-                })}
+                }):<div style={{color:'var(--muted)',fontSize:13,textAlign:'center',padding:40}}>No goals yet. Click "+ Add Goal" to create your first savings target.</div>}
               </div>
             )}
 
-            {active === 'Net Worth' && (
-              <div className="grid2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                    <div style={{ fontSize: 16, fontWeight: 800 }}>Assets</div>
-                    <button onClick={() => setShowAssetModal(true)} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '8px 10px', cursor: 'pointer' }}>+ Add Asset</button>
+            {/* NET WORTH */}
+            {active==='Net Worth'&&(
+              <div className="g2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+                <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:20}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+                    <div style={{fontSize:15,fontWeight:800}}>Assets</div>
+                    {iBtn('+ Add Asset',()=>setModal('asset'))}
                   </div>
-                  {assets.map((item, i) => <div key={item.name + i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}><span>{item.name}</span><strong>{fmt(item.amount)}</strong></div>)}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 14, fontWeight: 800 }}><span>Total Assets</span><span>{fmt(totalAssets)}</span></div>
+                  {assets.length?assets.map(item=>(
+                    <div key={item.id} style={{display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid var(--border)'}}>
+                      <span style={{fontSize:13}}>{item.name}</span>
+                      <div style={{display:'flex',gap:10,alignItems:'center'}}><strong>{fmt(item.amount)}</strong><button onClick={()=>delAsset(item.id)} style={{background:'transparent',color:'var(--muted)',border:'none',cursor:'pointer',fontSize:16}}>×</button></div>
+                    </div>
+                  )):<div style={{color:'var(--muted)',fontSize:13}}>No assets added yet.</div>}
+                  {assets.length>0&&<div style={{display:'flex',justifyContent:'space-between',paddingTop:12,fontWeight:800,fontSize:14}}><span>Total</span><span>{fmt(totalAssets)}</span></div>}
                 </div>
-                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                    <div style={{ fontSize: 16, fontWeight: 800 }}>Debts</div>
-                    <button onClick={() => setShowDebtModal(true)} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '8px 10px', cursor: 'pointer' }}>+ Add Debt</button>
+                <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:20}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+                    <div style={{fontSize:15,fontWeight:800}}>Debts</div>
+                    {iBtn('+ Add Debt',()=>setModal('debt'))}
                   </div>
-                  {debts.map((item, i) => <div key={item.name + i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}><span>{item.name}</span><strong>{fmt(item.amount)}</strong></div>)}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 14, fontWeight: 800 }}><span>Total Debts</span><span>{fmt(totalDebts)}</span></div>
+                  {debts.length?debts.map(item=>(
+                    <div key={item.id} style={{display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid var(--border)'}}>
+                      <span style={{fontSize:13}}>{item.name}</span>
+                      <div style={{display:'flex',gap:10,alignItems:'center'}}><strong>{fmt(item.amount)}</strong><button onClick={()=>delDebt(item.id)} style={{background:'transparent',color:'var(--muted)',border:'none',cursor:'pointer',fontSize:16}}>×</button></div>
+                    </div>
+                  )):<div style={{color:'var(--muted)',fontSize:13}}>No debts added yet.</div>}
+                  {debts.length>0&&<div style={{display:'flex',justifyContent:'space-between',paddingTop:12,fontWeight:800,fontSize:14}}><span>Total</span><span>{fmt(totalDebts)}</span></div>}
                 </div>
-                <div style={{ gridColumn: '1 / -1', background: netWorth >= 0 ? 'rgba(16,185,129,.12)' : 'rgba(239,68,68,.12)', border: `1px solid ${netWorth >= 0 ? 'rgba(16,185,129,.24)' : 'rgba(239,68,68,.24)'}`, borderRadius: 18, padding: 20 }}>
-                  <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--muted)', marginBottom: 6 }}>Net Worth</div>
-                  <div style={{ fontSize: 34, fontWeight: 900 }}>{fmt(netWorth)}</div>
-                  <div style={{ color: 'var(--muted)', marginTop: 8 }}>Assets minus liabilities. Keep updating this monthly to see real progress.</div>
+                <div style={{gridColumn:'1/-1',background:netWorth>=0?'rgba(16,185,129,.1)':'rgba(239,68,68,.1)',border:`1px solid ${netWorth>=0?'rgba(16,185,129,.2)':'rgba(239,68,68,.2)'}`,borderRadius:16,padding:22}}>
+                  <div style={{fontSize:11,textTransform:'uppercase',letterSpacing:'.12em',color:'var(--muted)',marginBottom:8}}>Net Worth</div>
+                  <div style={{fontSize:34,fontWeight:900}}>{fmt(netWorth)}</div>
+                  <div style={{color:'var(--muted)',marginTop:8,fontSize:13}}>Assets {fmt(totalAssets)} − Debts {fmt(totalDebts)}. Update monthly to track your real progress.</div>
                 </div>
               </div>
             )}
 
-            {active === 'AI Coach' && (
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }}>
-                <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 14 }}>AI Coach Notes</div>
-                <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 14, padding: 16, lineHeight: 1.7, fontSize: 14 }}>{coachMessage}</div>
-                <div style={{ marginTop: 14, color: 'var(--muted)', fontSize: 13 }}>Next step ideas: log every income source, mark bills recurring, edit your budget caps, and track your house and debts in Net Worth.</div>
+            {/* AI COACH */}
+            {active==='AI Coach'&&(
+              <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:20}}>
+                <div style={{fontSize:15,fontWeight:800,marginBottom:14}}>AI Coach</div>
+                <div style={{background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:12,padding:16,lineHeight:1.75,fontSize:14,marginBottom:14}}>{coachMsg}</div>
+                <div style={{fontSize:13,color:'var(--muted)'}}>Tips: log every income source, mark regular bills as recurring, set budget limits for each category, and add your assets and debts to Net Worth to see your complete financial picture.</div>
               </div>
             )}
           </div>
         </main>
       </div>
 
-      {showTxModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'grid', placeItems: 'center', padding: 16 }}>
-          <div style={{ width: '100%', maxWidth: 460, background: 'var(--surface)', border: '1px solid var(--border-2)', borderRadius: 18, padding: 20 }}>
-            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 14 }}>Add Transaction</div>
-            <div style={{ display: 'grid', gap: 12 }}>
-              <input value={tx.description} onChange={(e) => setTx({ ...tx, description: e.target.value })} placeholder="Description" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }} />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <input type="number" value={tx.amount} onChange={(e) => setTx({ ...tx, amount: e.target.value })} placeholder="Amount" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }} />
-                <input type="date" value={tx.date} onChange={(e) => setTx({ ...tx, date: e.target.value })} style={{ background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <select value={tx.category} onChange={(e) => setTx({ ...tx, category: e.target.value })} style={{ background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }}>
-                  {Object.keys(budgets).map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                </select>
-                <select value={tx.type} onChange={(e) => setTx({ ...tx, type: e.target.value })} style={{ background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }}>
-                  <option value="expense">Expense</option>
-                  <option value="income">Income</option>
-                </select>
-              </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--muted)' }}>
-                <input type="checkbox" checked={tx.recurring} onChange={(e) => setTx({ ...tx, recurring: e.target.checked })} /> Mark as recurring
-              </label>
+      {/* MODALS */}
+      {modal==='tx'&&(
+        <Modal onClose={()=>setModal(null)} title="Add Transaction">
+          <div style={{display:'grid',gap:12}}>
+            {inp(txForm.description,v=>setTxForm({...txForm,description:v}),{placeholder:'Description'})}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              {inp(txForm.amount,v=>setTxForm({...txForm,amount:v}),{type:'number',placeholder:'Amount'})}
+              {inp(txForm.date,v=>setTxForm({...txForm,date:v}),{type:'date'})}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
-              <button onClick={() => setShowTxModal(false)} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '10px 12px', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={addTransaction} style={{ background: 'var(--blue)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', fontWeight: 700 }}>Save Transaction</button>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              <select value={txForm.category} onChange={e=>setTxForm({...txForm,category:e.target.value})} style={{background:'var(--surface-2)',border:'1px solid var(--border-2)',color:'var(--text)',borderRadius:10,padding:11}}>
+                {allCats.map(c=><option key={c} value={c}>{c}</option>)}
+              </select>
+              <select value={txForm.type} onChange={e=>setTxForm({...txForm,type:e.target.value})} style={{background:'var(--surface-2)',border:'1px solid var(--border-2)',color:'var(--text)',borderRadius:10,padding:11}}>
+                <option value="expense">Expense</option>
+                <option value="income">Income</option>
+              </select>
             </div>
+            <label style={{display:'flex',alignItems:'center',gap:9,fontSize:13,color:'var(--muted)',cursor:'pointer'}}>
+              <input type="checkbox" checked={txForm.recurring} onChange={e=>setTxForm({...txForm,recurring:e.target.checked})}/> Mark as recurring (shows in Bills)
+            </label>
           </div>
-        </div>
+          <div style={{display:'flex',justifyContent:'flex-end',gap:10,marginTop:18}}>
+            {oBtn('Cancel',()=>setModal(null))}
+            {iBtn('Save Transaction',addTx)}
+          </div>
+        </Modal>
       )}
-
-      {showBudgetModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'grid', placeItems: 'center', padding: 16 }}>
-          <div style={{ width: '100%', maxWidth: 380, background: 'var(--surface)', border: '1px solid var(--border-2)', borderRadius: 18, padding: 20 }}>
-            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 14 }}>Edit Budget</div>
-            <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 8 }}>{editingBudget.key}</div>
-            <input type="number" value={editingBudget.value} onChange={(e) => setEditingBudget({ ...editingBudget, value: e.target.value })} style={{ width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }} />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
-              <button onClick={() => setShowBudgetModal(false)} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '10px 12px', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={saveBudget} style={{ background: 'var(--blue)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', fontWeight: 700 }}>Save</button>
-            </div>
+      {modal==='budget'&&(
+        <Modal onClose={()=>setModal(null)} title={`Edit Budget — ${budgetEdit.key}`}>
+          {inp(String(budgetEdit.value),v=>setBudgetEdit({...budgetEdit,value:v}),{type:'number',placeholder:'Monthly limit ($)'})}
+          <div style={{display:'flex',justifyContent:'flex-end',gap:10,marginTop:18}}>
+            {oBtn('Cancel',()=>setModal(null))}
+            {iBtn('Save',saveBudget)}
           </div>
-        </div>
+        </Modal>
       )}
-
-      {showAssetModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'grid', placeItems: 'center', padding: 16 }}>
-          <div style={{ width: '100%', maxWidth: 380, background: 'var(--surface)', border: '1px solid var(--border-2)', borderRadius: 18, padding: 20 }}>
-            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 14 }}>Add Asset</div>
-            <div style={{ display: 'grid', gap: 12 }}>
-              <input value={assetForm.name} onChange={(e) => setAssetForm({ ...assetForm, name: e.target.value })} placeholder="Asset name" style={{ width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }} />
-              <input type="number" value={assetForm.amount} onChange={(e) => setAssetForm({ ...assetForm, amount: e.target.value })} placeholder="Amount" style={{ width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
-              <button onClick={() => setShowAssetModal(false)} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '10px 12px', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={addAsset} style={{ background: 'var(--blue)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', fontWeight: 700 }}>Save</button>
+      {modal==='goal'&&(
+        <Modal onClose={()=>setModal(null)} title="Add Goal">
+          <div style={{display:'grid',gap:12}}>
+            {inp(goalForm.name,v=>setGoalForm({...goalForm,name:v}),{placeholder:'Goal name (e.g. Property Down Payment)'})}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              {inp(goalForm.target,v=>setGoalForm({...goalForm,target:v}),{type:'number',placeholder:'Target ($)'})}
+              {inp(goalForm.current,v=>setGoalForm({...goalForm,current:v}),{type:'number',placeholder:'Already saved ($)'})}
             </div>
           </div>
-        </div>
+          <div style={{display:'flex',justifyContent:'flex-end',gap:10,marginTop:18}}>
+            {oBtn('Cancel',()=>setModal(null))}
+            {iBtn('Save Goal',addGoal)}
+          </div>
+        </Modal>
       )}
-
-      {showDebtModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'grid', placeItems: 'center', padding: 16 }}>
-          <div style={{ width: '100%', maxWidth: 380, background: 'var(--surface)', border: '1px solid var(--border-2)', borderRadius: 18, padding: 20 }}>
-            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 14 }}>Add Debt</div>
-            <div style={{ display: 'grid', gap: 12 }}>
-              <input value={debtForm.name} onChange={(e) => setDebtForm({ ...debtForm, name: e.target.value })} placeholder="Debt name" style={{ width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }} />
-              <input type="number" value={debtForm.amount} onChange={(e) => setDebtForm({ ...debtForm, amount: e.target.value })} placeholder="Amount" style={{ width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 10, padding: 12 }} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
-              <button onClick={() => setShowDebtModal(false)} style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border-2)', borderRadius: 10, padding: '10px 12px', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={addDebt} style={{ background: 'var(--blue)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', fontWeight: 700 }}>Save</button>
-            </div>
+      {modal==='asset'&&(
+        <Modal onClose={()=>setModal(null)} title="Add Asset">
+          <div style={{display:'grid',gap:12}}>
+            {inp(assetForm.name,v=>setAssetForm({...assetForm,name:v}),{placeholder:'Asset name (e.g. Savings, Truck, House)'})}
+            {inp(assetForm.amount,v=>setAssetForm({...assetForm,amount:v}),{type:'number',placeholder:'Current value ($)'})}
           </div>
-        </div>
+          <div style={{display:'flex',justifyContent:'flex-end',gap:10,marginTop:18}}>
+            {oBtn('Cancel',()=>setModal(null))}
+            {iBtn('Save',addAsset)}
+          </div>
+        </Modal>
+      )}
+      {modal==='debt'&&(
+        <Modal onClose={()=>setModal(null)} title="Add Debt">
+          <div style={{display:'grid',gap:12}}>
+            {inp(debtForm.name,v=>setDebtForm({...debtForm,name:v}),{placeholder:'Debt name (e.g. Mortgage, Truck Loan)'})}
+            {inp(debtForm.amount,v=>setDebtForm({...debtForm,amount:v}),{type:'number',placeholder:'Balance owed ($)'})}
+          </div>
+          <div style={{display:'flex',justifyContent:'flex-end',gap:10,marginTop:18}}>
+            {oBtn('Cancel',()=>setModal(null))}
+            {iBtn('Save',addDebt)}
+          </div>
+        </Modal>
       )}
     </>
   )
