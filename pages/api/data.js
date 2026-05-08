@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis'
 
-const redis = Redis.fromEnv()
+const redis = Redis.fromEnv() // connected: upstash-kv-citron-forest
 
 const DEFAULT_DATA = {
   transactions: [],
