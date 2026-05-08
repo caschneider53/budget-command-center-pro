@@ -3,7 +3,7 @@ import Head from 'next/head'
 
 const S = {
   layout: { display:'flex', minHeight:'100vh', background:'var(--bg)', color:'var(--text)', fontFamily:"'Inter',system-ui,sans-serif" },
-  sidebar: { width:'220px', flexShrink:0, background:'var(--surface)', borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column', padding:'0' },
+  sidebar: { width:'220px', flexShrink:0, background:'var(--surface)', borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column' },
   logo: { padding:'20px 18px', borderBottom:'1px solid var(--border)' },
   logoMark: { fontSize:'15px', fontWeight:700, letterSpacing:'-0.02em', marginBottom:'2px' },
   logoSub: { fontSize:'10px', color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.1em' },
@@ -11,15 +11,14 @@ const S = {
   main: { flex:1, display:'flex', flexDirection:'column', overflow:'auto' },
   topbar: { padding:'14px 24px', background:'var(--surface)', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 },
   topTitle: { fontSize:'18px', fontWeight:700, letterSpacing:'-0.02em' },
-  btn: (c='var(--blue)') => ({ background:c, color: c==='var(--blue)'?'#fff':'var(--muted)', padding:'8px 14px', borderRadius:'var(--r-sm)', fontSize:'12px', fontWeight:600, cursor:'pointer', border:'none', transition:'opacity 120ms' }),
+  btn: (c='var(--blue)') => ({ background:c, color:'#fff', padding:'8px 14px', borderRadius:'var(--r-sm)', fontSize:'12px', fontWeight:600, cursor:'pointer', border:'none', transition:'opacity 120ms' }),
   content: { padding:'20px 24px', flex:1 },
   kgrid: { display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:'12px', marginBottom:'20px' },
   kpi: { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r-lg)', padding:'16px 18px' },
   klabel: { fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.09em', color:'var(--muted)', marginBottom:'8px' },
   kval: { fontSize:'24px', fontWeight:700, letterSpacing:'-0.02em', marginBottom:'3px', fontVariantNumeric:'tabular-nums lining-nums' },
-  kmeta: (ok=true) => ({ fontSize:'11px', color: ok?'var(--green)':'var(--red)', fontWeight:500 }),
+  kmeta: (ok=true) => ({ fontSize:'11px', color: ok?'var(--green)':'var(--muted)', fontWeight:500 }),
   g2: { display:'grid', gridTemplateColumns:'1.4fr 1fr', gap:'14px', marginBottom:'14px' },
-  g22: { display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' },
   card: { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r-lg)', padding:'18px 20px' },
   ctitle: { fontSize:'15px', fontWeight:700, marginBottom:'14px', letterSpacing:'-0.01em' },
   barBg: { height:'7px', background:'var(--surface-3)', borderRadius:'999px', overflow:'hidden', marginTop:'5px' },
@@ -32,28 +31,21 @@ const S = {
   fgrid: { display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'10px' },
   modal: { position:'fixed', inset:0, background:'rgba(0,0,0,0.65)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100, backdropFilter:'blur(4px)' },
   mbox: { background:'var(--surface)', border:'1px solid var(--border-2)', borderRadius:'var(--r-xl)', padding:'26px', width:'420px', maxWidth:'95vw', boxShadow:'0 24px 64px rgba(0,0,0,0.7)' },
+  empty: { display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'48px 20px', color:'var(--muted)', textAlign:'center', gap:'10px' },
+  emptyIcon: { fontSize:'32px', marginBottom:'4px' },
+  emptyTitle: { fontSize:'14px', fontWeight:600, color:'var(--text)' },
+  emptySub: { fontSize:'12px', maxWidth:'28ch', lineHeight:1.6 },
   amsg: (ai) => ({ display:'flex', gap:'8px', flexDirection:ai?'row':'row-reverse', marginBottom:'12px', alignItems:'flex-start' }),
   abub: (ai) => ({ maxWidth:'78%', padding:'9px 13px', borderRadius:ai?'4px 13px 13px 13px':'13px 4px 13px 13px', background:ai?'var(--surface-2)':'var(--blue-dim)', fontSize:'13px', lineHeight:1.65 }),
 }
 
 const CATS = [
-  {name:'Housing', budget:2250, spent:1850, color:'var(--blue)'},
-  {name:'Food & Groceries', budget:800, spent:640, color:'var(--green)'},
-  {name:'Transportation', budget:600, spent:390, color:'var(--yellow)'},
-  {name:'Utilities', budget:350, spent:290, color:'var(--purple)'},
-  {name:'Entertainment', budget:300, spent:180, color:'var(--red)'},
-  {name:'Health', budget:250, spent:115, color:'var(--green)'},
-]
-
-const INIT_TXNS = [
-  {id:1, name:'Home Depot', category:'Housing', date:'May 7', amount:-284.16, type:'expense'},
-  {id:2, name:'Costco', category:'Food', date:'May 6', amount:-146.72, type:'expense'},
-  {id:3, name:'Client Invoice #48', category:'Income', date:'May 5', amount:2400.00, type:'income'},
-  {id:4, name:'Shell Gas', category:'Transportation', date:'May 5', amount:-62.40, type:'expense'},
-  {id:5, name:'Verizon', category:'Utilities', date:'May 4', amount:-85.00, type:'expense'},
-  {id:6, name:'Netflix', category:'Entertainment', date:'May 3', amount:-22.99, type:'expense'},
-  {id:7, name:'Walmart', category:'Food', date:'May 3', amount:-93.44, type:'expense'},
-  {id:8, name:'Client Invoice #47', category:'Income', date:'May 1', amount:1800.00, type:'income'},
+  {name:'Housing', budget:2250, color:'var(--blue)'},
+  {name:'Food & Groceries', budget:800, color:'var(--green)'},
+  {name:'Transportation', budget:600, color:'var(--yellow)'},
+  {name:'Utilities', budget:350, color:'var(--purple)'},
+  {name:'Entertainment', budget:300, color:'var(--red)'},
+  {name:'Health', budget:250, color:'var(--green)'},
 ]
 
 const BILLS = [
@@ -66,10 +58,10 @@ const BILLS = [
 ]
 
 const GOALS = [
-  {name:'Emergency Fund', current:8200, target:15000, color:'var(--green)', icon:'\uD83D\uDEE1\uFE0F'},
-  {name:'Property Down Payment', current:12500, target:35000, color:'var(--blue)', icon:'\uD83C\uDFE1'},
-  {name:'Truck Upgrade', current:3100, target:8000, color:'var(--yellow)', icon:'\uD83D\uDE9B'},
-  {name:'Tool Investment', current:1400, target:5000, color:'var(--purple)', icon:'\uD83D\uDD27'},
+  {name:'Emergency Fund', current:0, target:15000, color:'var(--green)', icon:'\uD83D\uDEE1\uFE0F'},
+  {name:'Property Down Payment', current:0, target:35000, color:'var(--blue)', icon:'\uD83C\uDFE1'},
+  {name:'Truck Upgrade', current:0, target:8000, color:'var(--yellow)', icon:'\uD83D\uDE9B'},
+  {name:'Tool Investment', current:0, target:5000, color:'var(--purple)', icon:'\uD83D\uDD27'},
 ]
 
 const NAV = [
@@ -82,32 +74,38 @@ const NAV = [
 ]
 
 const AI_REPLIES = [
-  "Based on your data, your biggest opportunity is reducing Housing costs — currently at 82% of budget. Even saving $150/month there adds $1,800/year to goals.",
-  "Your Property Down Payment goal needs $22,500 more. At your current savings rate, you can reach it in approximately 18 months.",
-  "You have strong income this month. Consider moving an extra $400 into your Emergency Fund to hit your target faster.",
-  "Your Transportation spending is 65% of budget — well controlled. Keep that discipline and you'll free up budget elsewhere.",
-  "Bills due in the next 14 days total $1,260. Your available budget easily covers this — no action needed.",
+  "Based on your budget setup, start by logging your first transactions so I can give you personalized insights. Even a week of data helps!",
+  "Your goals are set up — now try adding your income sources first, then track expenses. That gives you the clearest picture of your savings rate.",
+  "To improve your savings rate, track every transaction for 30 days. Most people find 2-3 surprising categories they can trim.",
+  "Your Housing budget is your biggest category at $2,250. Once you log your mortgage/rent, you'll see exactly how much breathing room you have.",
+  "Great question! Once you have 2+ weeks of transactions logged, I can identify your top spending categories and suggest specific cuts.",
 ]
 
 export default function Home() {
   const [tab, setTab] = useState('Dashboard')
   const [modal, setModal] = useState(false)
-  const [txns, setTxns] = useState(INIT_TXNS)
-  const [form, setForm] = useState({name:'', category:'Food', amount:'', type:'expense'})
+  const [txns, setTxns] = useState([])
+  const [goals, setGoals] = useState(GOALS)
+  const [form, setForm] = useState({name:'', category:'Housing', amount:'', type:'expense'})
   const [msgs, setMsgs] = useState([
-    {ai:true, text:"Hi! I'm your AI Budget Coach. I can help you analyze spending, plan savings, and reach your financial goals faster. What would you like to know?"},
+    {ai:true, text:"Hi! I'm your AI Budget Coach. Add your first transactions to get started, and I'll help you analyze spending and reach your goals faster."},
   ])
   const [aiIn, setAiIn] = useState('')
 
   const income = txns.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0)
   const spent = txns.filter(t=>t.type==='expense').reduce((s,t)=>s+Math.abs(t.amount),0)
+  const available = income - spent
+  const savingsRate = income > 0 ? ((income - spent) / income * 100).toFixed(1) : '0.0'
+
+  const catSpend = (name) => txns.filter(t=>t.type==='expense' && t.category===name).reduce((s,t)=>s+Math.abs(t.amount),0)
 
   function addTxn() {
     if (!form.name || !form.amount) return
     const amt = parseFloat(form.amount)
+    if (isNaN(amt) || amt <= 0) return
     setTxns(p=>[{id:Date.now(), ...form, amount:form.type==='expense'?-Math.abs(amt):Math.abs(amt), date:'Today'}, ...p])
     setModal(false)
-    setForm({name:'', category:'Food', amount:'', type:'expense'})
+    setForm({name:'', category:'Housing', amount:'', type:'expense'})
   }
 
   function sendAi(e) {
@@ -119,6 +117,10 @@ export default function Home() {
     setTimeout(()=>{
       setMsgs(m=>[...m, {ai:true, text:AI_REPLIES[Math.floor(Math.random()*AI_REPLIES.length)]}])
     }, 700)
+  }
+
+  function fmt(n) {
+    return '$' + Math.abs(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})
   }
 
   return (
@@ -149,7 +151,7 @@ export default function Home() {
           </div>
         </aside>
 
-        {/* MAIN AREA */}
+        {/* MAIN */}
         <div style={S.main}>
           <div style={S.topbar}>
             <div style={S.topTitle}>{tab}</div>
@@ -161,46 +163,66 @@ export default function Home() {
 
           <div style={S.content}>
 
-            {/* ── DASHBOARD ── */}
+            {/* DASHBOARD */}
             {tab==='Dashboard' && (
               <>
                 <div style={S.kgrid}>
-                  {[
-                    ['Available to Budget','$3,420','↑ +$310 this month',true],
-                    ['Monthly Income','$'+income.toLocaleString(),''+txns.filter(t=>t.type==='income').length+' deposits',true],
-                    ['Monthly Spending','$'+spent.toFixed(0),'72% of monthly income',false],
-                    ['Savings Rate','18.4%','↑ +3.1% vs last month',true],
-                  ].map(([l,v,m,ok])=>(
-                    <div key={l} style={S.kpi}>
-                      <div style={S.klabel}>{l}</div>
-                      <div style={S.kval}>{v}</div>
-                      <div style={S.kmeta(ok)}>{m}</div>
-                    </div>
-                  ))}
+                  <div style={S.kpi}>
+                    <div style={S.klabel}>Available to Budget</div>
+                    <div style={S.kval}>{fmt(available)}</div>
+                    <div style={S.kmeta(available >= 0)}>{income===0 ? 'Add income to get started' : available >= 0 ? 'Looking good' : 'Over budget'}</div>
+                  </div>
+                  <div style={S.kpi}>
+                    <div style={S.klabel}>Monthly Income</div>
+                    <div style={S.kval}>{fmt(income)}</div>
+                    <div style={S.kmeta(true)}>{txns.filter(t=>t.type==='income').length} deposit{txns.filter(t=>t.type==='income').length!==1?'s':''} logged</div>
+                  </div>
+                  <div style={S.kpi}>
+                    <div style={S.klabel}>Monthly Spending</div>
+                    <div style={S.kval}>{fmt(spent)}</div>
+                    <div style={S.kmeta(true)}>{txns.filter(t=>t.type==='expense').length} transaction{txns.filter(t=>t.type==='expense').length!==1?'s':''} logged</div>
+                  </div>
+                  <div style={S.kpi}>
+                    <div style={S.klabel}>Savings Rate</div>
+                    <div style={S.kval}>{savingsRate}%</div>
+                    <div style={S.kmeta(parseFloat(savingsRate)>0)}>{income===0 ? 'Log income first' : parseFloat(savingsRate)>15 ? 'Great rate!' : 'Add more income'}</div>
+                  </div>
                 </div>
+
                 <div style={S.g2}>
                   <div style={S.card}>
                     <div style={S.ctitle}>Budget Categories</div>
-                    {CATS.map(c=>(
-                      <div key={c.name} style={{marginBottom:'13px'}}>
-                        <div style={{display:'flex', justifyContent:'space-between', fontSize:'12px', marginBottom:'3px'}}>
-                          <span style={{display:'flex',alignItems:'center'}}><span style={S.dot(c.color)}/>{c.name}</span>
-                          <span style={{color:'var(--muted)', fontVariantNumeric:'tabular-nums'}}>${c.spent} <span style={{color:'var(--faint)'}}>/ ${c.budget}</span></span>
+                    {CATS.map(c=>{
+                      const s = catSpend(c.name)
+                      const pct = c.budget > 0 ? Math.round(s/c.budget*100) : 0
+                      return (
+                        <div key={c.name} style={{marginBottom:'13px'}}>
+                          <div style={{display:'flex', justifyContent:'space-between', fontSize:'12px', marginBottom:'3px'}}>
+                            <span style={{display:'flex',alignItems:'center'}}><span style={S.dot(c.color)}/>{c.name}</span>
+                            <span style={{color:'var(--muted)', fontVariantNumeric:'tabular-nums'}}>{fmt(s)} <span style={{color:'var(--faint)'}}>/ ${c.budget.toLocaleString()}</span></span>
+                          </div>
+                          <div style={S.barBg}><div style={S.bar(pct, c.color)}/></div>
                         </div>
-                        <div style={S.barBg}><div style={S.bar(Math.round(c.spent/c.budget*100),c.color)}/></div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
+
                   <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
                     <div style={S.card}>
                       <div style={S.ctitle}>Recent Transactions</div>
-                      {txns.slice(0,4).map(t=>(
+                      {txns.length === 0 ? (
+                        <div style={S.empty}>
+                          <div style={S.emptyIcon}>💳</div>
+                          <div style={S.emptyTitle}>No transactions yet</div>
+                          <div style={S.emptySub}>Click "+ Add Transaction" to log your first one.</div>
+                        </div>
+                      ) : txns.slice(0,5).map(t=>(
                         <div key={t.id} style={S.row}>
                           <div>
                             <div style={{fontWeight:500,fontSize:'13px'}}>{t.name}</div>
                             <div style={{fontSize:'11px',color:'var(--muted)'}}>{t.category} · {t.date}</div>
                           </div>
-                          <div style={{fontWeight:700,fontSize:'13px',color:t.amount>0?'var(--green)':'var(--text)',fontVariantNumeric:'tabular-nums'}}>{t.amount>0?'+':''}{t.amount.toFixed(2)}</div>
+                          <div style={{fontWeight:700,fontSize:'13px',color:t.amount>0?'var(--green)':'var(--text)',fontVariantNumeric:'tabular-nums'}}>{t.amount>0?'+':''}{fmt(t.amount)}</div>
                         </div>
                       ))}
                     </div>
@@ -221,18 +243,19 @@ export default function Home() {
               </>
             )}
 
-            {/* ── BUDGET ── */}
+            {/* BUDGET */}
             {tab==='Budget' && (
               <>
                 <div style={S.kgrid}>
-                  <div style={S.kpi}><div style={S.klabel}>Total Budgeted</div><div style={S.kval}>$4,550</div></div>
-                  <div style={S.kpi}><div style={S.klabel}>Total Spent</div><div style={S.kval}>$3,465</div><div style={S.kmeta(true)}>76% of budget used</div></div>
-                  <div style={S.kpi}><div style={S.klabel}>Remaining</div><div style={S.kval} >$1,085</div><div style={S.kmeta(true)}>On track</div></div>
+                  <div style={S.kpi}><div style={S.klabel}>Total Budgeted</div><div style={S.kval}>${CATS.reduce((s,c)=>s+c.budget,0).toLocaleString()}</div></div>
+                  <div style={S.kpi}><div style={S.klabel}>Total Spent</div><div style={S.kval}>{fmt(spent)}</div><div style={S.kmeta(true)}>{income>0?Math.round(spent/income*100)+'% of income':'Log income first'}</div></div>
+                  <div style={S.kpi}><div style={S.klabel}>Remaining</div><div style={S.kval}>{fmt(CATS.reduce((s,c)=>s+c.budget,0)-spent)}</div><div style={S.kmeta(true)}>Budget left</div></div>
                 </div>
                 <div style={S.card}>
                   <div style={S.ctitle}>Category Breakdown</div>
                   {CATS.map(c=>{
-                    const pct = Math.round(c.spent/c.budget*100)
+                    const s = catSpend(c.name)
+                    const pct = Math.round(s/c.budget*100)
                     return (
                       <div key={c.name} style={{padding:'12px 0', borderBottom:'1px solid var(--border)'}}>
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'7px'}}>
@@ -240,7 +263,7 @@ export default function Home() {
                             <span style={S.dot(c.color)}/>{c.name}
                           </div>
                           <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
-                            <span style={{fontSize:'12px',color:'var(--muted)',fontVariantNumeric:'tabular-nums'}}>${c.spent} / ${c.budget}</span>
+                            <span style={{fontSize:'12px',color:'var(--muted)',fontVariantNumeric:'tabular-nums'}}>{fmt(s)} / ${c.budget.toLocaleString()}</span>
                             <span style={S.tag(pct>80?'var(--red)':pct>60?'var(--yellow)':'var(--green)')}>{pct}%</span>
                           </div>
                         </div>
@@ -252,45 +275,54 @@ export default function Home() {
               </>
             )}
 
-            {/* ── TRANSACTIONS ── */}
+            {/* TRANSACTIONS */}
             {tab==='Transactions' && (
               <div style={S.card}>
                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px'}}>
                   <div style={S.ctitle}>All Transactions</div>
                   <button style={S.btn()} onClick={()=>setModal(true)}>+ Add</button>
                 </div>
-                <table>
-                  <thead>
-                    <tr style={{borderBottom:'1px solid var(--border)'}}>
-                      {['Date','Description','Category','Amount','Type'].map(h=>(
-                        <th key={h} style={{textAlign:'left',padding:'8px 10px',fontSize:'10px',textTransform:'uppercase',letterSpacing:'0.09em',color:'var(--muted)',fontWeight:600}}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {txns.map(t=>(
-                      <tr key={t.id} style={{borderBottom:'1px solid var(--border)',transition:'background 120ms'}}
-                        onMouseEnter={e=>e.currentTarget.style.background='var(--surface-2)'}
-                        onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                        <td style={{padding:'10px',color:'var(--muted)',fontSize:'12px'}}>{t.date}</td>
-                        <td style={{padding:'10px',fontWeight:500,fontSize:'13px'}}>{t.name}</td>
-                        <td style={{padding:'10px'}}><span style={S.tag()}>{t.category}</span></td>
-                        <td style={{padding:'10px',fontWeight:700,fontSize:'13px',color:t.amount>0?'var(--green)':'var(--text)',fontVariantNumeric:'tabular-nums'}}>{t.amount>0?'+':''}{t.amount.toFixed(2)}</td>
-                        <td style={{padding:'10px'}}><span style={S.tag(t.type==='income'?'var(--green)':'var(--muted)')}>{t.type}</span></td>
+                {txns.length === 0 ? (
+                  <div style={S.empty}>
+                    <div style={S.emptyIcon}>📋</div>
+                    <div style={S.emptyTitle}>No transactions yet</div>
+                    <div style={S.emptySub}>Start logging your income and expenses to track your budget.</div>
+                    <button style={{...S.btn(), marginTop:'8px'}} onClick={()=>setModal(true)}>+ Add First Transaction</button>
+                  </div>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr style={{borderBottom:'1px solid var(--border)'}}>
+                        {['Date','Description','Category','Amount','Type'].map(h=>(
+                          <th key={h} style={{textAlign:'left',padding:'8px 10px',fontSize:'10px',textTransform:'uppercase',letterSpacing:'0.09em',color:'var(--muted)',fontWeight:600}}>{h}</th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {txns.map(t=>(
+                        <tr key={t.id} style={{borderBottom:'1px solid var(--border)',transition:'background 120ms'}}
+                          onMouseEnter={e=>e.currentTarget.style.background='var(--surface-2)'}
+                          onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                          <td style={{padding:'10px',color:'var(--muted)',fontSize:'12px'}}>{t.date}</td>
+                          <td style={{padding:'10px',fontWeight:500,fontSize:'13px'}}>{t.name}</td>
+                          <td style={{padding:'10px'}}><span style={S.tag()}>{t.category}</span></td>
+                          <td style={{padding:'10px',fontWeight:700,fontSize:'13px',color:t.amount>0?'var(--green)':'var(--text)',fontVariantNumeric:'tabular-nums'}}>{t.amount>0?'+':''}{fmt(t.amount)}</td>
+                          <td style={{padding:'10px'}}><span style={S.tag(t.type==='income'?'var(--green)':'var(--muted)')}>{t.type}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             )}
 
-            {/* ── BILLS ── */}
+            {/* BILLS */}
             {tab==='Bills' && (
               <>
                 <div style={S.kgrid}>
-                  <div style={S.kpi}><div style={S.klabel}>Due This Month</div><div style={S.kval}>$2,245</div></div>
-                  <div style={S.kpi}><div style={S.klabel}>Due Next 14 Days</div><div style={S.kval}>$1,955</div><div style={S.kmeta(false)}>↑ Needs coverage</div></div>
+                  <div style={S.kpi}><div style={S.klabel}>Due This Month</div><div style={S.kval}>${BILLS.reduce((s,b)=>s+b.amount,0).toLocaleString()}</div></div>
                   <div style={S.kpi}><div style={S.klabel}>Bills Count</div><div style={S.kval}>{BILLS.length}</div><div style={S.kmeta(true)}>All upcoming</div></div>
+                  <div style={S.kpi}><div style={S.klabel}>Largest Bill</div><div style={S.kval}>${Math.max(...BILLS.map(b=>b.amount)).toLocaleString()}</div><div style={S.kmeta(true)}>Mortgage</div></div>
                 </div>
                 <div style={S.card}>
                   <div style={S.ctitle}>Upcoming Bills</div>
@@ -313,11 +345,11 @@ export default function Home() {
               </>
             )}
 
-            {/* ── GOALS ── */}
+            {/* GOALS */}
             {tab==='Goals' && (
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:'14px'}}>
-                {GOALS.map(g=>{
-                  const pct = Math.round(g.current/g.target*100)
+                {goals.map((g,gi)=>{
+                  const pct = g.target > 0 ? Math.round(g.current/g.target*100) : 0
                   return (
                     <div key={g.name} style={{...S.card,display:'flex',flexDirection:'column',gap:'13px'}}>
                       <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
@@ -334,14 +366,30 @@ export default function Home() {
                         </div>
                         <div style={S.barBg}><div style={S.bar(pct,g.color)}/></div>
                       </div>
-                      <div style={{fontSize:'11px',color:'var(--muted)',fontVariantNumeric:'tabular-nums'}}>${(g.target-g.current).toLocaleString()} remaining to reach this goal</div>
+                      <div style={{display:'flex',gap:'6px'}}>
+                        <input
+                          style={{...S.input, fontSize:'12px', padding:'6px 8px'}}
+                          type="number"
+                          placeholder="Update saved amount..."
+                          onKeyDown={e=>{
+                            if(e.key==='Enter' && e.target.value){
+                              const val = parseFloat(e.target.value)
+                              if(!isNaN(val) && val >= 0){
+                                setGoals(gs=>gs.map((gg,i)=>i===gi?{...gg,current:val}:gg))
+                                e.target.value=''
+                              }
+                            }
+                          }}
+                        />
+                      </div>
+                      <div style={{fontSize:'11px',color:'var(--muted)',fontVariantNumeric:'tabular-nums'}}>${(g.target-g.current).toLocaleString()} remaining</div>
                     </div>
                   )
                 })}
               </div>
             )}
 
-            {/* ── AI COACH ── */}
+            {/* AI COACH */}
             {tab==='AI Coach' && (
               <div style={{display:'grid',gridTemplateColumns:'1fr 280px',gap:'14px',height:'calc(100vh - 130px)'}}>
                 <div style={{...S.card,display:'flex',flexDirection:'column',overflow:'hidden'}}>
@@ -363,11 +411,11 @@ export default function Home() {
                   <div style={S.ctitle}>Suggested Questions</div>
                   {[
                     'How can I save faster for my down payment?',
-                    'Where am I overspending this month?',
-                    'How long until I reach my emergency fund goal?',
-                    'What should I cut to improve my savings rate?',
+                    'Where should I focus my budget first?',
+                    'What savings rate should I aim for?',
+                    'How do I build my emergency fund faster?',
                   ].map(q=>(
-                    <div key={q} onClick={()=>{setAiIn(q)}} style={{fontSize:'12px',color:'var(--muted)',padding:'9px 11px',borderRadius:'var(--r-sm)',background:'var(--surface-2)',marginBottom:'8px',cursor:'pointer',lineHeight:1.55,transition:'background 120ms'}}
+                    <div key={q} onClick={()=>setAiIn(q)} style={{fontSize:'12px',color:'var(--muted)',padding:'9px 11px',borderRadius:'var(--r-sm)',background:'var(--surface-2)',marginBottom:'8px',cursor:'pointer',lineHeight:1.55,transition:'background 120ms'}}
                       onMouseEnter={e=>e.currentTarget.style.background='var(--surface-3)'}
                       onMouseLeave={e=>e.currentTarget.style.background='var(--surface-2)'}>
                       💡 {q}
@@ -392,18 +440,18 @@ export default function Home() {
             <div style={S.fgrid}>
               <div>
                 <label style={S.label}>Description</label>
-                <input style={S.input} value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="e.g. Home Depot" />
+                <input style={S.input} value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="e.g. Mortgage" />
               </div>
               <div>
                 <label style={S.label}>Amount ($)</label>
-                <input style={S.input} type="number" step="0.01" value={form.amount} onChange={e=>setForm(p=>({...p,amount:e.target.value}))} placeholder="0.00" />
+                <input style={S.input} type="number" step="0.01" min="0" value={form.amount} onChange={e=>setForm(p=>({...p,amount:e.target.value}))} placeholder="0.00" />
               </div>
             </div>
             <div style={S.fgrid}>
               <div>
                 <label style={S.label}>Category</label>
                 <select style={S.input} value={form.category} onChange={e=>setForm(p=>({...p,category:e.target.value}))}>
-                  {['Housing','Food','Transportation','Utilities','Entertainment','Health','Income','Other'].map(c=><option key={c}>{c}</option>)}
+                  {['Housing','Food & Groceries','Transportation','Utilities','Entertainment','Health','Other'].map(c=><option key={c}>{c}</option>)}
                 </select>
               </div>
               <div>
@@ -415,7 +463,7 @@ export default function Home() {
               </div>
             </div>
             <div style={{display:'flex',gap:'8px',justifyContent:'flex-end',marginTop:'6px'}}>
-              <button style={S.btn('transparent')} onClick={()=>setModal(false)}>Cancel</button>
+              <button style={{...S.btn('var(--surface-3)'),color:'var(--muted)'}} onClick={()=>setModal(false)}>Cancel</button>
               <button style={S.btn()} onClick={addTxn}>Add Transaction</button>
             </div>
           </div>
